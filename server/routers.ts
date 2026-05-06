@@ -6,6 +6,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { getCategories, getMaterials, getMaterialById, getStoresForMaterial, searchMaterials, getKnowledgeBaseArticles, getKnowledgeBaseArticleById } from "./db";
 import { calculatorsRouter } from "./calculators.router";
 import { partnerRouter } from "./partners.router";
+import { tier2Router } from "./tier2.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -63,6 +64,7 @@ export const appRouter = router({
 
   calculators: calculatorsRouter,
   partners: partnerRouter,
+  tier2: tier2Router,
 });
 
 export type AppRouter = typeof appRouter;
