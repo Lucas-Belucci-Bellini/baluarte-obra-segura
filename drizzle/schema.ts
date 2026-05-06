@@ -106,3 +106,94 @@ export const knowledgeBaseArticles = mysqlTable("knowledgeBaseArticles", {
 
 export type KnowledgeBaseArticle = typeof knowledgeBaseArticles.$inferSelect;
 export type InsertKnowledgeBaseArticle = typeof knowledgeBaseArticles.$inferInsert;
+
+/**
+ * Engineering Specialties (Civil, Electrical, Hydraulic, Mechanical)
+ */
+export const specialties = mysqlTable("specialties", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 64 }).notNull().unique(),
+  descriptionPortuguese: text("descriptionPortuguese"),
+  descriptionEnglish: text("descriptionEnglish"),
+  icon: varchar("icon", { length: 64 }),
+  color: varchar("color", { length: 7 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Specialty = typeof specialties.$inferSelect;
+export type InsertSpecialty = typeof specialties.$inferInsert;
+
+/**
+ * Calculators for engineering functions
+ */
+export const calculators = mysqlTable("calculators", {
+  id: int("id").autoincrement().primaryKey(),
+  namePortuguese: varchar("namePortuguese", { length: 255 }).notNull(),
+  nameEnglish: varchar("nameEnglish", { length: 255 }).notNull(),
+  descriptionPortuguese: text("descriptionPortuguese"),
+  descriptionEnglish: text("descriptionEnglish"),
+  specialtyId: int("specialtyId").notNull(),
+  formula: text("formula"),
+  inputs: text("inputs"),
+  outputs: text("outputs"),
+  standards: varchar("standards", { length: 255 }),
+  category: varchar("category", { length: 64 }),
+  tier: mysqlEnum("tier", ["free", "pro", "enterprise"]).default("free").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Calculator = typeof calculators.$inferSelect;
+export type InsertCalculator = typeof calculators.$inferInsert;
+
+/**
+ * Calculation Results History
+ */
+export const calculationResults = mysqlTable("calculationResults", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  calculatorId: int("calculatorId").notNull(),
+  inputs: text("inputs"),
+  outputs: text("outputs"),
+  projectId: int("projectId"),
+  name: varchar("name", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CalculationResult = typeof calculationResults.$inferSelect;
+export type InsertCalculationResult = typeof calculationResults.$inferInsert;
+
+/**
+ * Safety Standards and Compliance
+ */
+export const safetyStandards = mysqlTable("safetyStandards", {
+  id: int("id").autoincrement().primaryKey(),
+  namePortuguese: varchar("namePortuguese", { length: 255 }).notNull(),
+  nameEnglish: varchar("nameEnglish", { length: 255 }).notNull(),
+  code: varchar("code", { length: 64 }).notNull(),
+  descriptionPortuguese: text("descriptionPortuguese"),
+  descriptionEnglish: text("descriptionEnglish"),
+  specialtyId: int("specialtyId"),
+  type: varchar("type", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SafetyStandard = typeof safetyStandards.$inferSelect;
+export type InsertSafetyStandard = typeof safetyStandards.$inferInsert;
+
+/**
+ * Engineering Projects
+ */
+export const projects = mysqlTable("projects", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  specialtyId: int("specialtyId"),
+  status: mysqlEnum("status", ["active", "completed", "archived"]).default("active").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Project = typeof projects.$inferSelect;
+export type InsertProject = typeof projects.$inferInsert;

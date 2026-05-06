@@ -4,6 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { getCategories, getMaterials, getMaterialById, getStoresForMaterial, searchMaterials, getKnowledgeBaseArticles, getKnowledgeBaseArticleById } from "./db";
+import { calculatorsRouter } from "./calculators.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -58,6 +59,8 @@ export const appRouter = router({
         return getKnowledgeBaseArticleById(input);
       }),
   }),
+
+  calculators: calculatorsRouter,
 });
 
 export type AppRouter = typeof appRouter;

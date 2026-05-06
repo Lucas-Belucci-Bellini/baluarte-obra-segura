@@ -15,6 +15,13 @@
       "when": 1778107051161,
       "tag": "0001_wealthy_fantastic_four",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1778107979736,
+      "tag": "0002_handy_maddog",
+      "breakpoints": true
     }
   ]
 }

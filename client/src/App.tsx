@@ -9,12 +9,14 @@ import Home from "./pages/Home";
 import MaterialDetail from "./pages/MaterialDetail";
 import Catalog from "./pages/Catalog";
 import KnowledgeBase from "./pages/KnowledgeBase";
+import Calculators from "./pages/Calculators";
 
 function Router() {
   return (
     <Switch>
       <Route path="" component={Home} />
       <Route path="/catalog" component={Catalog} />
+      <Route path="/calculators" component={Calculators} />
       <Route path="/knowledge-base" component={KnowledgeBase} />
       <Route path="/material/:id" component={MaterialDetail} />
       <Route path="/404" component={NotFound} />
