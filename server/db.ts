@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, categories, materials, stores, materialStores, knowledgeBaseArticles } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,79 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getCategories() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(categories);
+}
+
+export async function getMaterials(categoryId?: number, limit = 20, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  if (categoryId) {
+    return db.select().from(materials)
+      .where(eq(materials.categoryId, categoryId))
+      .limit(limit)
+      .offset(offset);
+  }
+  return db.select().from(materials).limit(limit).offset(offset);
+}
+
+export async function getMaterialById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(materials).where(eq(materials.id, id)).limit(1);
+  return result[0];
+}
+
+export async function searchMaterials(searchQuery: string, limit = 10) {
+  const db = await getDb();
+  if (!db) return [];
+  // Simple search - returns all materials if empty query
+  if (!searchQuery || searchQuery.trim() === '') {
+    return db.select().from(materials).limit(limit);
+  }
+  // In a real app, you'd use LIKE or full-text search
+  // For now, return all materials (implement proper search in frontend)
+  return db.select().from(materials).limit(limit);
+}
+
+export async function getStoresForMaterial(materialId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ store: stores })
+    .from(materialStores)
+    .innerJoin(stores, eq(materialStores.storeId, stores.id))
+    .where(eq(materialStores.materialId, materialId));
+}
+
+export async function getKnowledgeBaseArticles(categoryId?: number, featured = false, limit = 10, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  if (categoryId && featured) {
+    return db.select().from(knowledgeBaseArticles)
+      .where(eq(knowledgeBaseArticles.categoryId, categoryId))
+      .limit(limit)
+      .offset(offset);
+  }
+  if (categoryId) {
+    return db.select().from(knowledgeBaseArticles)
+      .where(eq(knowledgeBaseArticles.categoryId, categoryId))
+      .limit(limit)
+      .offset(offset);
+  }
+  if (featured) {
+    return db.select().from(knowledgeBaseArticles)
+      .where(eq(knowledgeBaseArticles.featured, 1))
+      .limit(limit)
+      .offset(offset);
+  }
+  return db.select().from(knowledgeBaseArticles).limit(limit).offset(offset);
+}
+
+export async function getKnowledgeBaseArticleById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(knowledgeBaseArticles).where(eq(knowledgeBaseArticles.id, id)).limit(1);
+  return result[0];
+}

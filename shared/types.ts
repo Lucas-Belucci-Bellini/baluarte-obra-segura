@@ -5,3 +5,5 @@
 
 export type * from "../drizzle/schema";
 export * from "./_core/errors";
+
+export type { Category, Material, Store, KnowledgeBaseArticle } from "../drizzle/schema";
