@@ -1,0 +1,56 @@
+{
+  "name": "baluarte-engineering-hub",
+  "version": "1.0.0",
+  "description": "BALUARTE ENGINEERING HUB - Desktop Application",
+  "main": "dist/main.js",
+  "homepage": "./",
+  "private": true,
+  "dependencies": {
+    "electron-is-dev": "^2.0.0",
+    "electron-store": "^8.1.0",
+    "sqlite3": "^5.1.6",
+    "node-fetch": "^2.6.11"
+  },
+  "devDependencies": {
+    "@types/electron": "^1.6.10",
+    "@types/node": "^18.0.0",
+    "electron": "^latest",
+    "electron-builder": "^24.0.0",
+    "typescript": "^5.0.0"
+  },
+  "build": {
+    "appId": "com.baluarte.engineering-hub",
+    "productName": "BALUARTE ENGINEERING HUB",
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
+  }
+}
