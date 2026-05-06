@@ -7,6 +7,9 @@ import { getCategories, getMaterials, getMaterialById, getStoresForMaterial, sea
 import { calculatorsRouter } from "./calculators.router";
 import { partnerRouter } from "./partners.router";
 import { tier2Router } from "./tier2.router";
+import { tier3Router } from "./tier3.router";
+import { chatbotsRouter } from "./chatbots.router";
+import { businessModelRouter } from "./businessModel.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -65,6 +68,9 @@ export const appRouter = router({
   calculators: calculatorsRouter,
   partners: partnerRouter,
   tier2: tier2Router,
+  tier3: tier3Router,
+  chatbots: chatbotsRouter,
+  billing: businessModelRouter,
 });
 
 export type AppRouter = typeof appRouter;
