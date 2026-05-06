@@ -197,3 +197,181 @@ export const projects = mysqlTable("projects", {
 
 export type Project = typeof projects.$inferSelect;
 export type InsertProject = typeof projects.$inferInsert;
+
+
+/**
+ * B2B PARTNERSHIP SYSTEM TABLES
+ */
+
+/**
+ * Partner Companies
+ */
+export const partners = mysqlTable("partners", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  website: varchar("website", { length: 255 }),
+  industry: varchar("industry", { length: 100 }),
+  country: varchar("country", { length: 100 }),
+  tier: mysqlEnum("tier", ["free", "pro", "enterprise"]).default("free").notNull(),
+  status: mysqlEnum("status", ["pending", "active", "suspended", "inactive"]).default("pending").notNull(),
+  apiKey: varchar("apiKey", { length: 64 }).notNull().unique(),
+  apiSecret: varchar("apiSecret", { length: 64 }).notNull(),
+  dataSourceType: mysqlEnum("dataSourceType", ["api", "upload", "direct_db", "webhook"]).default("api").notNull(),
+  maxRecords: int("maxRecords").default(1000).notNull(),
+  syncFrequency: int("syncFrequency").default(3600).notNull(),
+  lastSyncAt: timestamp("lastSyncAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Partner = typeof partners.$inferSelect;
+export type InsertPartner = typeof partners.$inferInsert;
+
+/**
+ * Partner Data Sources
+ */
+export const partnerDataSources = mysqlTable("partnerDataSources", {
+  id: int("id").autoincrement().primaryKey(),
+  partnerId: int("partnerId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: mysqlEnum("type", ["products", "materials", "suppliers", "prices", "specifications"]).notNull(),
+  sourceUrl: varchar("sourceUrl", { length: 500 }),
+  sourceFormat: mysqlEnum("sourceFormat", ["json", "csv", "xml", "database"]).default("json").notNull(),
+  mappingConfig: text("mappingConfig"), // JSON
+  isActive: int("isActive").default(1).notNull(),
+  lastSyncAt: timestamp("lastSyncAt"),
+  syncStatus: mysqlEnum("syncStatus", ["pending", "syncing", "success", "error"]).default("pending").notNull(),
+  lastError: text("lastError"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PartnerDataSource = typeof partnerDataSources.$inferSelect;
+export type InsertPartnerDataSource = typeof partnerDataSources.$inferInsert;
+
+/**
+ * Partner Products/Materials
+ */
+export const partnerProducts = mysqlTable("partnerProducts", {
+  id: int("id").autoincrement().primaryKey(),
+  partnerId: int("partnerId").notNull(),
+  externalId: varchar("externalId", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  price: varchar("price", { length: 20 }), // Decimal as string to preserve precision
+  currency: varchar("currency", { length: 3 }).default("BRL").notNull(),
+  stock: int("stock"),
+  specifications: text("specifications"), // JSON
+  certifications: text("certifications"), // JSON
+  leadTime: int("leadTime"), // days
+  minOrder: int("minOrder").default(1).notNull(),
+  maxOrder: int("maxOrder"),
+  imageUrl: varchar("imageUrl", { length: 500 }),
+  dataSourceId: int("dataSourceId"),
+  syncedAt: timestamp("syncedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PartnerProduct = typeof partnerProducts.$inferSelect;
+export type InsertPartnerProduct = typeof partnerProducts.$inferInsert;
+
+/**
+ * Partner API Logs
+ */
+export const partnerApiLogs = mysqlTable("partnerApiLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  partnerId: int("partnerId").notNull(),
+  method: varchar("method", { length: 10 }),
+  endpoint: varchar("endpoint", { length: 500 }),
+  statusCode: int("statusCode"),
+  requestSize: int("requestSize"),
+  responseSize: int("responseSize"),
+  duration: int("duration"), // milliseconds
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PartnerApiLog = typeof partnerApiLogs.$inferSelect;
+export type InsertPartnerApiLog = typeof partnerApiLogs.$inferInsert;
+
+/**
+ * Sync Queue (for offline/online sync)
+ */
+export const syncQueue = mysqlTable("syncQueue", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  partnerId: int("partnerId"),
+  entityType: varchar("entityType", { length: 100 }).notNull(),
+  entityId: int("entityId").notNull(),
+  action: mysqlEnum("action", ["create", "update", "delete"]).notNull(),
+  data: text("data"), // JSON
+  status: mysqlEnum("status", ["pending", "synced", "failed"]).default("pending").notNull(),
+  retryCount: int("retryCount").default(0).notNull(),
+  lastError: text("lastError"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  syncedAt: timestamp("syncedAt"),
+});
+
+export type SyncQueueItem = typeof syncQueue.$inferSelect;
+export type InsertSyncQueueItem = typeof syncQueue.$inferInsert;
+
+/**
+ * Partner Analytics
+ */
+export const partnerAnalytics = mysqlTable("partnerAnalytics", {
+  id: int("id").autoincrement().primaryKey(),
+  partnerId: int("partnerId").notNull(),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  productViews: int("productViews").default(0).notNull(),
+  productClicks: int("productClicks").default(0).notNull(),
+  addToCart: int("addToCart").default(0).notNull(),
+  purchases: int("purchases").default(0).notNull(),
+  revenue: varchar("revenue", { length: 20 }).default("0").notNull(), // Decimal as string
+  leads: int("leads").default(0).notNull(),
+  uniqueUsers: int("uniqueUsers").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PartnerAnalytic = typeof partnerAnalytics.$inferSelect;
+export type InsertPartnerAnalytic = typeof partnerAnalytics.$inferInsert;
+
+/**
+ * Partner Webhooks
+ */
+export const partnerWebhooks = mysqlTable("partnerWebhooks", {
+  id: int("id").autoincrement().primaryKey(),
+  partnerId: int("partnerId").notNull(),
+  url: varchar("url", { length: 500 }).notNull(),
+  events: text("events").notNull(), // JSON array of event types
+  isActive: int("isActive").default(1).notNull(),
+  secret: varchar("secret", { length: 64 }).notNull(),
+  lastTriggeredAt: timestamp("lastTriggeredAt"),
+  failureCount: int("failureCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PartnerWebhook = typeof partnerWebhooks.$inferSelect;
+export type InsertPartnerWebhook = typeof partnerWebhooks.$inferInsert;
+
+/**
+ * Offline Sync Metadata
+ */
+export const offlineSyncMetadata = mysqlTable("offlineSyncMetadata", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  deviceId: varchar("deviceId", { length: 255 }).notNull(),
+  lastSyncAt: timestamp("lastSyncAt"),
+  lastSyncHash: varchar("lastSyncHash", { length: 64 }),
+  pendingChanges: int("pendingChanges").default(0).notNull(),
+  cacheSize: int("cacheSize").default(0).notNull(),
+  isOnline: int("isOnline").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OfflineSyncMetadata = typeof offlineSyncMetadata.$inferSelect;
+export type InsertOfflineSyncMetadata = typeof offlineSyncMetadata.$inferInsert;

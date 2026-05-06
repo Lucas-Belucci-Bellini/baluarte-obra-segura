@@ -5,6 +5,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { getCategories, getMaterials, getMaterialById, getStoresForMaterial, searchMaterials, getKnowledgeBaseArticles, getKnowledgeBaseArticleById } from "./db";
 import { calculatorsRouter } from "./calculators.router";
+import { partnerRouter } from "./partners.router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -61,6 +62,7 @@ export const appRouter = router({
   }),
 
   calculators: calculatorsRouter,
+  partners: partnerRouter,
 });
 
 export type AppRouter = typeof appRouter;
