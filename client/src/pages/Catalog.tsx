@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Navigation } from '@/components/Navigation';
+import { SaveButton } from '@/components/SaveButton';
 import { trpc } from '@/lib/trpc';
-import { Search, Package, AlertTriangle, CheckCircle, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { Search, Package, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { Link } from 'wouter';
 
 const RISK_LEVELS = [
@@ -31,9 +32,12 @@ function MaterialCard({ material, language }: { material: any; language: string 
   const desc = language === 'PT' ? material.descriptionPortuguese : material.descriptionEnglish;
 
   return (
-    <Link href={`/material/${material.id}`}>
-      <div className="card card-interactive" style={{ padding: '1.25rem', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '0.75rem', height: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+    <div className="card card-interactive" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', height: '100%', position: 'relative' }}>
+      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 2 }}>
+        <SaveButton itemType="material" itemId={material.id} iconOnly />
+      </div>
+      <Link href={`/material/${material.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', paddingRight: 38 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flex: 1, minWidth: 0 }}>
             <div style={{ width: 38, height: 38, borderRadius: 8, background: 'var(--bg-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--border)' }}>
               <Package size={18} color="var(--accent)" />
@@ -42,6 +46,8 @@ function MaterialCard({ material, language }: { material: any; language: string 
               <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
             </div>
           </div>
+        </div>
+        <div>
           <RiskChip level={material.riskLevel} language={language} />
         </div>
         {desc && (
@@ -52,8 +58,8 @@ function MaterialCard({ material, language }: { material: any; language: string 
         <div style={{ fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 600, marginTop: 'auto' }}>
           {language === 'PT' ? 'Ver detalhes →' : 'View details →'}
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 

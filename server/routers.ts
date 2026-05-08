@@ -2,12 +2,14 @@ import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import {
   getCategories, getMaterials, getMaterialById, getMaterialBySlug, getMaterialPrices,
   getToolCategories, getTools, getToolById, getToolPrices,
   getKnowledgeBaseArticles, getKnowledgeBaseArticleById,
   getCalculators, globalSearch,
+  updateUserProfile, getUserByOpenId,
+  listSavedItems, listSavedItemKeys, toggleSavedItem, updateSavedItemNotes,
 } from "./db";
 
 export const appRouter = router({
@@ -20,6 +22,23 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    updateProfile: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1).max(120).optional(),
+        bio: z.string().max(500).optional(),
+        profession: z.string().max(100).optional(),
+        avatarUrl: z.string().url().max(500).optional().or(z.literal("")),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await updateUserProfile(ctx.user.id, {
+          name: input.name,
+          bio: input.bio,
+          profession: input.profession,
+          avatarUrl: input.avatarUrl === "" ? null : input.avatarUrl,
+        });
+        const fresh = await getUserByOpenId(ctx.user.openId);
+        return fresh ?? ctx.user;
+      }),
   }),
 
   // ─── Categories ────────────────────────────────────────────────────────────
@@ -128,6 +147,30 @@ export const appRouter = router({
     global: publicProcedure
       .input(z.string().min(1).max(200))
       .query(({ input }) => globalSearch(input, 8)),
+  }),
+
+  // ─── Saved items (favoritos) ───────────────────────────────────────────────
+  savedItems: router({
+    list: protectedProcedure.query(({ ctx }) => listSavedItems(ctx.user.id)),
+
+    keys: protectedProcedure.query(({ ctx }) => listSavedItemKeys(ctx.user.id)),
+
+    toggle: protectedProcedure
+      .input(z.object({
+        itemType: z.enum(["material", "tool", "article", "calculator"]),
+        itemId: z.number().int().positive(),
+      }))
+      .mutation(({ ctx, input }) => toggleSavedItem(ctx.user.id, input.itemType, input.itemId)),
+
+    notes: protectedProcedure
+      .input(z.object({
+        savedItemId: z.number().int().positive(),
+        notes: z.string().max(2000).nullable(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await updateSavedItemNotes(ctx.user.id, input.savedItemId, input.notes);
+        return { success: true } as const;
+      }),
   }),
 });
 

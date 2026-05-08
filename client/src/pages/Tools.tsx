@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Navigation } from '@/components/Navigation';
+import { SaveButton } from '@/components/SaveButton';
 import { trpc } from '@/lib/trpc';
 import { Wrench, Zap, Battery, Hand, Wind, Droplets, Search, SlidersHorizontal, ChevronDown } from 'lucide-react';
-import { Link } from 'wouter';
 
 const POWER_TYPES = [
   { value: '', label: 'Todos', labelEN: 'All' },
@@ -42,8 +42,11 @@ function ToolCard({ tool, language }: { tool: any; language: string }) {
   const levelColor = LEVEL_COLORS[tool.professionLevel] || 'var(--text-muted)';
 
   return (
-    <div className="card card-interactive" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+    <div className="card card-interactive" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
+      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 2 }}>
+        <SaveButton itemType="tool" itemId={tool.id} iconOnly />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', paddingRight: 38 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
           <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--accent-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <PowerIcon size={22} color="var(--accent)" />
@@ -55,6 +58,8 @@ function ToolCard({ tool, language }: { tool: any; language: string }) {
             </div>
           </div>
         </div>
+      </div>
+      <div>
         <span style={{ fontSize: '0.75rem', fontWeight: 600, color: levelColor, background: levelColor + '18', border: `1px solid ${levelColor}30`, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap' }}>
           {PROFESSION_LEVELS.find(l => l.value === tool.professionLevel)?.[language === 'PT' ? 'label' : 'labelEN'] || tool.professionLevel}
         </span>
