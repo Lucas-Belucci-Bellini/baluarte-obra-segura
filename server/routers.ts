@@ -9,6 +9,7 @@ import {
   getKnowledgeBaseArticles, getKnowledgeBaseArticleById,
   getCalculators, globalSearch,
   updateUserProfile, getUserByOpenId,
+  listSavedItems, listSavedItemKeys, toggleSavedItem, updateSavedItemNotes,
 } from "./db";
 
 export const appRouter = router({
@@ -146,6 +147,30 @@ export const appRouter = router({
     global: publicProcedure
       .input(z.string().min(1).max(200))
       .query(({ input }) => globalSearch(input, 8)),
+  }),
+
+  // ─── Saved items (favoritos) ───────────────────────────────────────────────
+  savedItems: router({
+    list: protectedProcedure.query(({ ctx }) => listSavedItems(ctx.user.id)),
+
+    keys: protectedProcedure.query(({ ctx }) => listSavedItemKeys(ctx.user.id)),
+
+    toggle: protectedProcedure
+      .input(z.object({
+        itemType: z.enum(["material", "tool", "article", "calculator"]),
+        itemId: z.number().int().positive(),
+      }))
+      .mutation(({ ctx, input }) => toggleSavedItem(ctx.user.id, input.itemType, input.itemId)),
+
+    notes: protectedProcedure
+      .input(z.object({
+        savedItemId: z.number().int().positive(),
+        notes: z.string().max(2000).nullable(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await updateSavedItemNotes(ctx.user.id, input.savedItemId, input.notes);
+        return { success: true } as const;
+      }),
   }),
 });
 

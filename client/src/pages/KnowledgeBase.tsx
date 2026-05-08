@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Navigation } from '@/components/Navigation';
+import { SaveButton } from '@/components/SaveButton';
 import { trpc } from '@/lib/trpc';
 import { BookOpen, Search, Clock, Star } from 'lucide-react';
 
@@ -11,14 +12,17 @@ function ArticleCard({ article, language }: { article: any; language: string }) 
   const preview = summary || content?.substring(0, 180);
 
   return (
-    <div className="card card-interactive" style={{ padding: '1.5rem', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+    <div className="card card-interactive" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.875rem', position: 'relative' }}>
+      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 2 }}>
+        <SaveButton itemType="article" itemId={article.id} iconOnly />
+      </div>
       {article.featured === 1 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
           <Star size={11} fill="currentColor" />
           {language === 'PT' ? 'Destaque' : 'Featured'}
         </div>
       )}
-      <div>
+      <div style={{ paddingRight: 38 }}>
         <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text)', lineHeight: 1.4, marginBottom: '0.5rem' }}>{title}</h3>
         {preview && (
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.7, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>

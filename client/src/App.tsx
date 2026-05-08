@@ -12,6 +12,7 @@ import Calculators from "./pages/Calculators";
 import Tools from "./pages/Tools";
 import Login from "./pages/Login";
 import Account from "./pages/Account";
+import Saved from "./pages/Saved";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/material/:id" component={MaterialDetail} />
       <Route path="/login" component={Login} />
       <Route path="/account" component={Account} />
+      <Route path="/saved" component={Saved} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

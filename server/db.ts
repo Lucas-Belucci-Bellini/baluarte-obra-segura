@@ -271,6 +271,75 @@ export async function getCalculators(opts?: { categorySlug?: string; featured?: 
   return query.limit(limit);
 }
 
+// ─── Saved items (favoritos) ─────────────────────────────────────────────────
+
+export type SavedItemType = "material" | "tool" | "article" | "calculator";
+
+export async function listSavedItems(userId: number) {
+  const db = await getDb();
+  if (!db) return { material: [], tool: [], article: [], calculator: [] };
+
+  const rows = await db.select().from(savedItems)
+    .where(eq(savedItems.userId, userId))
+    .orderBy(desc(savedItems.createdAt));
+
+  const grouped: Record<SavedItemType, typeof rows> = { material: [], tool: [], article: [], calculator: [] };
+  for (const r of rows) (grouped[r.itemType as SavedItemType] ??= []).push(r);
+
+  const matIds = grouped.material.map(r => r.itemId);
+  const toolIds = grouped.tool.map(r => r.itemId);
+  const artIds = grouped.article.map(r => r.itemId);
+  const calcIds = grouped.calculator.map(r => r.itemId);
+
+  const [mats, ts, arts, calcs] = await Promise.all([
+    matIds.length ? db.select().from(materials).where(or(...matIds.map(id => eq(materials.id, id)))!) : Promise.resolve([]),
+    toolIds.length ? db.select().from(tools).where(or(...toolIds.map(id => eq(tools.id, id)))!) : Promise.resolve([]),
+    artIds.length ? db.select().from(knowledgeBaseArticles).where(or(...artIds.map(id => eq(knowledgeBaseArticles.id, id)))!) : Promise.resolve([]),
+    calcIds.length ? db.select().from(calculators).where(or(...calcIds.map(id => eq(calculators.id, id)))!) : Promise.resolve([]),
+  ]);
+
+  const matMap = new Map(mats.map(m => [m.id, m]));
+  const toolMap = new Map(ts.map(t => [t.id, t]));
+  const artMap = new Map(arts.map(a => [a.id, a]));
+  const calcMap = new Map(calcs.map(c => [c.id, c]));
+
+  return {
+    material: grouped.material.map(r => ({ saved: r, item: matMap.get(r.itemId) })).filter(x => x.item),
+    tool: grouped.tool.map(r => ({ saved: r, item: toolMap.get(r.itemId) })).filter(x => x.item),
+    article: grouped.article.map(r => ({ saved: r, item: artMap.get(r.itemId) })).filter(x => x.item),
+    calculator: grouped.calculator.map(r => ({ saved: r, item: calcMap.get(r.itemId) })).filter(x => x.item),
+  };
+}
+
+export async function listSavedItemKeys(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ itemType: savedItems.itemType, itemId: savedItems.itemId })
+    .from(savedItems)
+    .where(eq(savedItems.userId, userId));
+}
+
+export async function toggleSavedItem(userId: number, itemType: SavedItemType, itemId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(savedItems)
+    .where(and(eq(savedItems.userId, userId), eq(savedItems.itemType, itemType), eq(savedItems.itemId, itemId))!)
+    .limit(1);
+  if (existing.length > 0) {
+    await db.delete(savedItems).where(eq(savedItems.id, existing[0].id));
+    return { saved: false } as const;
+  }
+  await db.insert(savedItems).values({ userId, itemType, itemId });
+  return { saved: true } as const;
+}
+
+export async function updateSavedItemNotes(userId: number, savedItemId: number, notes: string | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(savedItems).set({ notes })
+    .where(and(eq(savedItems.id, savedItemId), eq(savedItems.userId, userId))!);
+}
+
 // ─── Global search ───────────────────────────────────────────────────────────
 
 export async function globalSearch(query: string, limit = 10) {
