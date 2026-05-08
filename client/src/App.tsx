@@ -13,6 +13,8 @@ import Tools from "./pages/Tools";
 import Login from "./pages/Login";
 import Account from "./pages/Account";
 import Saved from "./pages/Saved";
+import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
 
 function Router() {
   return (
@@ -26,6 +28,8 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/account" component={Account} />
       <Route path="/saved" component={Saved} />
+      <Route path="/projects" component={Projects} />
+      <Route path="/projects/:id" component={ProjectDetail} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

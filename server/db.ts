@@ -5,7 +5,7 @@ import {
   categories, materials, toolCategories, tools,
   stores, materialPrices, toolPrices,
   knowledgeBaseArticles, calculators,
-  savedItems, projects,
+  savedItems, projects, projectItems,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -338,6 +338,184 @@ export async function updateSavedItemNotes(userId: number, savedItemId: number, 
   if (!db) throw new Error("Database not available");
   await db.update(savedItems).set({ notes })
     .where(and(eq(savedItems.id, savedItemId), eq(savedItems.userId, userId))!);
+}
+
+// ─── Projects ────────────────────────────────────────────────────────────────
+
+export type ProjectType = "residential" | "commercial" | "industrial" | "rural" | "renovation" | "other";
+export type ProjectStatus = "planning" | "active" | "completed" | "archived";
+export type ProjectItemType = "material" | "tool";
+
+export async function listProjects(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const projs = await db.select().from(projects)
+    .where(eq(projects.userId, userId))
+    .orderBy(desc(projects.updatedAt));
+
+  if (projs.length === 0) return [];
+
+  const items = await db.select().from(projectItems)
+    .where(or(...projs.map(p => eq(projectItems.projectId, p.id)))!);
+
+  const grouped = new Map<number, { count: number; subtotal: number }>();
+  for (const it of items) {
+    const cur = grouped.get(it.projectId) ?? { count: 0, subtotal: 0 };
+    cur.count += 1;
+    const qty = Number(it.quantity ?? 1);
+    const price = Number(it.unitPrice ?? 0);
+    cur.subtotal += qty * price;
+    grouped.set(it.projectId, cur);
+  }
+
+  return projs.map(p => ({
+    ...p,
+    itemCount: grouped.get(p.id)?.count ?? 0,
+    computedSubtotal: grouped.get(p.id)?.subtotal ?? 0,
+  }));
+}
+
+export async function getProjectById(userId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId))!)
+    .limit(1);
+  if (result.length === 0) return undefined;
+
+  const items = await db.select().from(projectItems)
+    .where(eq(projectItems.projectId, projectId))
+    .orderBy(asc(projectItems.itemType), asc(projectItems.id));
+
+  const matIds = items.filter(i => i.itemType === "material").map(i => i.itemId);
+  const toolIds = items.filter(i => i.itemType === "tool").map(i => i.itemId);
+
+  const [mats, ts] = await Promise.all([
+    matIds.length ? db.select().from(materials).where(or(...matIds.map(id => eq(materials.id, id)))!) : Promise.resolve([]),
+    toolIds.length ? db.select().from(tools).where(or(...toolIds.map(id => eq(tools.id, id)))!) : Promise.resolve([]),
+  ]);
+
+  const matMap = new Map(mats.map(m => [m.id, m]));
+  const toolMap = new Map(ts.map(t => [t.id, t]));
+
+  const enriched = items.map(it => ({
+    ...it,
+    material: it.itemType === "material" ? matMap.get(it.itemId) ?? null : null,
+    tool: it.itemType === "tool" ? toolMap.get(it.itemId) ?? null : null,
+  }));
+
+  return { ...result[0], items: enriched };
+}
+
+export async function createProject(
+  userId: number,
+  data: { name: string; description?: string | null; projectType?: ProjectType; areaSqm?: string | null; budgetEstimate?: string | null }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(projects).values({
+    userId,
+    name: data.name,
+    description: data.description ?? null,
+    projectType: data.projectType ?? "residential",
+    areaSqm: data.areaSqm ?? null,
+    budgetEstimate: data.budgetEstimate ?? null,
+  });
+  const insertId = (result as any)[0]?.insertId ?? (result as any).insertId;
+  return Number(insertId);
+}
+
+export async function updateProject(
+  userId: number,
+  projectId: number,
+  patch: { name?: string; description?: string | null; projectType?: ProjectType; status?: ProjectStatus; areaSqm?: string | null; budgetEstimate?: string | null }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const updateSet: Record<string, unknown> = {};
+  for (const k of ["name", "description", "projectType", "status", "areaSqm", "budgetEstimate"] as const) {
+    if (patch[k] !== undefined) updateSet[k] = patch[k];
+  }
+  if (Object.keys(updateSet).length === 0) return;
+  await db.update(projects).set(updateSet)
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId))!);
+}
+
+export async function deleteProject(userId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const owned = await db.select({ id: projects.id }).from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId))!)
+    .limit(1);
+  if (owned.length === 0) throw new Error("Project not found");
+  await db.delete(projectItems).where(eq(projectItems.projectId, projectId));
+  await db.delete(projects).where(eq(projects.id, projectId));
+}
+
+async function assertProjectOwner(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, userId: number, projectId: number) {
+  const owned = await db.select({ id: projects.id }).from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId))!)
+    .limit(1);
+  if (owned.length === 0) throw new Error("Project not found");
+}
+
+export async function addProjectItem(
+  userId: number,
+  data: { projectId: number; itemType: ProjectItemType; itemId: number; quantity?: string; unitPrice?: string | null; notes?: string | null }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await assertProjectOwner(db, userId, data.projectId);
+
+  let unitPrice = data.unitPrice ?? null;
+  if (unitPrice == null) {
+    if (data.itemType === "material") {
+      const m = await db.select({ basePrice: materials.basePrice }).from(materials).where(eq(materials.id, data.itemId)).limit(1);
+      unitPrice = m[0]?.basePrice ?? null;
+    } else {
+      const tl = await db.select({ basePrice: tools.basePrice }).from(tools).where(eq(tools.id, data.itemId)).limit(1);
+      unitPrice = tl[0]?.basePrice ?? null;
+    }
+  }
+
+  const result = await db.insert(projectItems).values({
+    projectId: data.projectId,
+    itemType: data.itemType,
+    itemId: data.itemId,
+    quantity: data.quantity ?? "1.00",
+    unitPrice,
+    notes: data.notes ?? null,
+  });
+  const insertId = (result as any)[0]?.insertId ?? (result as any).insertId;
+  return Number(insertId);
+}
+
+export async function updateProjectItem(
+  userId: number,
+  projectItemId: number,
+  patch: { quantity?: string; unitPrice?: string | null; notes?: string | null }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const row = await db.select().from(projectItems).where(eq(projectItems.id, projectItemId)).limit(1);
+  if (row.length === 0) throw new Error("Item not found");
+  await assertProjectOwner(db, userId, row[0].projectId);
+
+  const updateSet: Record<string, unknown> = {};
+  for (const k of ["quantity", "unitPrice", "notes"] as const) {
+    if (patch[k] !== undefined) updateSet[k] = patch[k];
+  }
+  if (Object.keys(updateSet).length === 0) return;
+  await db.update(projectItems).set(updateSet).where(eq(projectItems.id, projectItemId));
+}
+
+export async function removeProjectItem(userId: number, projectItemId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const row = await db.select().from(projectItems).where(eq(projectItems.id, projectItemId)).limit(1);
+  if (row.length === 0) return;
+  await assertProjectOwner(db, userId, row[0].projectId);
+  await db.delete(projectItems).where(eq(projectItems.id, projectItemId));
 }
 
 // ─── Global search ───────────────────────────────────────────────────────────

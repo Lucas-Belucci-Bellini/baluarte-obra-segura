@@ -10,7 +10,14 @@ import {
   getCalculators, globalSearch,
   updateUserProfile, getUserByOpenId,
   listSavedItems, listSavedItemKeys, toggleSavedItem, updateSavedItemNotes,
+  listProjects, getProjectById, createProject, updateProject, deleteProject,
+  addProjectItem, updateProjectItem, removeProjectItem,
 } from "./db";
+
+const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid decimal");
+const projectTypeEnum = z.enum(["residential", "commercial", "industrial", "rural", "renovation", "other"]);
+const projectStatusEnum = z.enum(["planning", "active", "completed", "archived"]);
+const projectItemTypeEnum = z.enum(["material", "tool"]);
 
 export const appRouter = router({
   system: systemRouter,
@@ -147,6 +154,85 @@ export const appRouter = router({
     global: publicProcedure
       .input(z.string().min(1).max(200))
       .query(({ input }) => globalSearch(input, 8)),
+  }),
+
+  // ─── Projects ──────────────────────────────────────────────────────────────
+  projects: router({
+    list: protectedProcedure.query(({ ctx }) => listProjects(ctx.user.id)),
+
+    byId: protectedProcedure
+      .input(z.number().int().positive())
+      .query(({ ctx, input }) => getProjectById(ctx.user.id, input)),
+
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1).max(255),
+        description: z.string().max(2000).nullable().optional(),
+        projectType: projectTypeEnum.optional(),
+        areaSqm: decimalString.nullable().optional(),
+        budgetEstimate: decimalString.nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const id = await createProject(ctx.user.id, input);
+        return { id } as const;
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        name: z.string().min(1).max(255).optional(),
+        description: z.string().max(2000).nullable().optional(),
+        projectType: projectTypeEnum.optional(),
+        status: projectStatusEnum.optional(),
+        areaSqm: decimalString.nullable().optional(),
+        budgetEstimate: decimalString.nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...patch } = input;
+        await updateProject(ctx.user.id, id, patch);
+        return { success: true } as const;
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteProject(ctx.user.id, input.id);
+        return { success: true } as const;
+      }),
+
+    addItem: protectedProcedure
+      .input(z.object({
+        projectId: z.number().int().positive(),
+        itemType: projectItemTypeEnum,
+        itemId: z.number().int().positive(),
+        quantity: decimalString.optional(),
+        unitPrice: decimalString.nullable().optional(),
+        notes: z.string().max(500).nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const id = await addProjectItem(ctx.user.id, input);
+        return { id } as const;
+      }),
+
+    updateItem: protectedProcedure
+      .input(z.object({
+        projectItemId: z.number().int().positive(),
+        quantity: decimalString.optional(),
+        unitPrice: decimalString.nullable().optional(),
+        notes: z.string().max(500).nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { projectItemId, ...patch } = input;
+        await updateProjectItem(ctx.user.id, projectItemId, patch);
+        return { success: true } as const;
+      }),
+
+    removeItem: protectedProcedure
+      .input(z.object({ projectItemId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await removeProjectItem(ctx.user.id, input.projectItemId);
+        return { success: true } as const;
+      }),
   }),
 
   // ─── Saved items (favoritos) ───────────────────────────────────────────────

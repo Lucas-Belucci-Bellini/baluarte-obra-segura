@@ -2,6 +2,7 @@ import { useParams, useLocation } from 'wouter';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Navigation } from '@/components/Navigation';
 import { SaveButton } from '@/components/SaveButton';
+import { AddToProjectButton } from '@/components/AddToProjectButton';
 import { trpc } from '@/lib/trpc';
 import { ArrowLeft, AlertTriangle, ShieldAlert, ShieldCheck, Package, DollarSign, FileText, Store } from 'lucide-react';
 
@@ -102,9 +103,10 @@ export default function MaterialDetail() {
             <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.25rem)', fontWeight: 900, color: 'var(--text)', letterSpacing: '-0.03em', flex: 1, minWidth: 200 }}>
               {name}
             </h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap' }}>
               <RiskBadge level={material.riskLevel || 'NORMAL'} language={language} />
               <SaveButton itemType="material" itemId={material.id} size="md" />
+              <AddToProjectButton itemType="material" itemId={material.id} size="md" />
             </div>
           </div>
           {description && (

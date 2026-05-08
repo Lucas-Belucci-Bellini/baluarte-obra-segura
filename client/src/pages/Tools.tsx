@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Navigation } from '@/components/Navigation';
 import { SaveButton } from '@/components/SaveButton';
+import { AddToProjectButton } from '@/components/AddToProjectButton';
 import { trpc } from '@/lib/trpc';
 import { Wrench, Zap, Battery, Hand, Wind, Droplets, Search, SlidersHorizontal, ChevronDown } from 'lucide-react';
 
@@ -43,10 +44,11 @@ function ToolCard({ tool, language }: { tool: any; language: string }) {
 
   return (
     <div className="card card-interactive" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
-      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 2 }}>
+      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 2, display: 'flex', gap: 4 }}>
+        <AddToProjectButton itemType="tool" itemId={tool.id} iconOnly />
         <SaveButton itemType="tool" itemId={tool.id} iconOnly />
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', paddingRight: 38 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', paddingRight: 72 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
           <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--accent-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <PowerIcon size={22} color="var(--accent)" />

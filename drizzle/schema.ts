@@ -200,6 +200,21 @@ export const projects = mysqlTable("projects", {
 export type Project = typeof projects.$inferSelect;
 export type InsertProject = typeof projects.$inferInsert;
 
+export const projectItems = mysqlTable("projectItems", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  itemType: mysqlEnum("itemType", ["material", "tool"]).notNull(),
+  itemId: int("itemId").notNull(),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).default("1.00").notNull(),
+  unitPrice: decimal("unitPrice", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProjectItem = typeof projectItems.$inferSelect;
+export type InsertProjectItem = typeof projectItems.$inferInsert;
+
 export const calculators = mysqlTable("calculators", {
   id: int("id").autoincrement().primaryKey(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
