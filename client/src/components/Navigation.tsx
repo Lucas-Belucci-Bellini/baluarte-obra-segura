@@ -3,6 +3,7 @@ import { Link, useLocation } from 'wouter';
 import { Search, Menu, X, Zap, Globe, Wrench, BookOpen, Calculator, Package } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
+import { UserMenu } from '@/components/UserMenu';
 
 const NAV_LINKS = [
   { href: '/catalog', labelPT: 'Materiais', labelEN: 'Materials', icon: Package },
@@ -190,6 +191,8 @@ export function Navigation() {
             <Globe size={14} />
             <span className="text-xs font-bold">{language}</span>
           </button>
+
+          <UserMenu />
 
           <button className="btn btn-ghost btn-sm lg:hidden" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <X size={18} /> : <Menu size={18} />}

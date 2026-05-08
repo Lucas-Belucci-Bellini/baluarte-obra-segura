@@ -68,6 +68,20 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function updateUserProfile(
+  userId: number,
+  patch: { name?: string | null; bio?: string | null; profession?: string | null; avatarUrl?: string | null }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const updateSet: Record<string, unknown> = {};
+  for (const k of ["name", "bio", "profession", "avatarUrl"] as const) {
+    if (patch[k] !== undefined) updateSet[k] = patch[k];
+  }
+  if (Object.keys(updateSet).length === 0) return;
+  await db.update(users).set(updateSet).where(eq(users.id, userId));
+}
+
 // ─── Categories ─────────────────────────────────────────────────────────────
 
 export async function getCategories() {

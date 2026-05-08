@@ -2,12 +2,13 @@ import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import {
   getCategories, getMaterials, getMaterialById, getMaterialBySlug, getMaterialPrices,
   getToolCategories, getTools, getToolById, getToolPrices,
   getKnowledgeBaseArticles, getKnowledgeBaseArticleById,
   getCalculators, globalSearch,
+  updateUserProfile, getUserByOpenId,
 } from "./db";
 
 export const appRouter = router({
@@ -20,6 +21,23 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    updateProfile: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1).max(120).optional(),
+        bio: z.string().max(500).optional(),
+        profession: z.string().max(100).optional(),
+        avatarUrl: z.string().url().max(500).optional().or(z.literal("")),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await updateUserProfile(ctx.user.id, {
+          name: input.name,
+          bio: input.bio,
+          profession: input.profession,
+          avatarUrl: input.avatarUrl === "" ? null : input.avatarUrl,
+        });
+        const fresh = await getUserByOpenId(ctx.user.openId);
+        return fresh ?? ctx.user;
+      }),
   }),
 
   // ─── Categories ────────────────────────────────────────────────────────────

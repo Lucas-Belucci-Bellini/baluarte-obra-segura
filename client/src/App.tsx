@@ -10,6 +10,8 @@ import Catalog from "./pages/Catalog";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import Calculators from "./pages/Calculators";
 import Tools from "./pages/Tools";
+import Login from "./pages/Login";
+import Account from "./pages/Account";
 
 function Router() {
   return (
@@ -20,6 +22,8 @@ function Router() {
       <Route path="/calculators" component={Calculators} />
       <Route path="/knowledge-base" component={KnowledgeBase} />
       <Route path="/material/:id" component={MaterialDetail} />
+      <Route path="/login" component={Login} />
+      <Route path="/account" component={Account} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
