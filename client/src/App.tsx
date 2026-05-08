@@ -3,19 +3,20 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import Home from "./pages/Home";
 import MaterialDetail from "./pages/MaterialDetail";
 import Catalog from "./pages/Catalog";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import Calculators from "./pages/Calculators";
+import Tools from "./pages/Tools";
 
 function Router() {
   return (
     <Switch>
       <Route path="" component={Home} />
       <Route path="/catalog" component={Catalog} />
+      <Route path="/tools" component={Tools} />
       <Route path="/calculators" component={Calculators} />
       <Route path="/knowledge-base" component={KnowledgeBase} />
       <Route path="/material/:id" component={MaterialDetail} />
@@ -28,14 +29,12 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
-        <LanguageProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </LanguageProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <TooltipProvider>
+          <Toaster theme="dark" />
+          <Router />
+        </TooltipProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   );
 }

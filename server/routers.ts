@@ -3,74 +3,132 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { getCategories, getMaterials, getMaterialById, getStoresForMaterial, searchMaterials, getKnowledgeBaseArticles, getKnowledgeBaseArticleById } from "./db";
-import { calculatorsRouter } from "./calculators.router";
-import { partnerRouter } from "./partners.router";
-import { tier2Router } from "./tier2.router";
-import { tier3Router } from "./tier3.router";
-import { chatbotsRouter } from "./chatbots.router";
-import { businessModelRouter } from "./businessModel.router";
+import {
+  getCategories, getMaterials, getMaterialById, getMaterialBySlug, getMaterialPrices,
+  getToolCategories, getTools, getToolById, getToolPrices,
+  getKnowledgeBaseArticles, getKnowledgeBaseArticleById,
+  getCalculators, globalSearch,
+} from "./db";
 
 export const appRouter = router({
   system: systemRouter,
+
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      return { success: true } as const;
     }),
   }),
 
+  // ─── Categories ────────────────────────────────────────────────────────────
+  categories: router({
+    list: publicProcedure.query(() => getCategories()),
+  }),
+
+  // ─── Materials ─────────────────────────────────────────────────────────────
   materials: router({
     list: publicProcedure
-      .input(z.object({ categoryId: z.number().optional(), limit: z.number().default(20), offset: z.number().default(0) }).optional())
-      .query(async ({ input }) => {
-        return getMaterials(input?.categoryId, input?.limit, input?.offset);
-      }),
+      .input(z.object({
+        categoryId: z.number().optional(),
+        search: z.string().optional(),
+        riskLevel: z.enum(["RISCO_ALTO", "ATENCAO", "NORMAL"]).optional(),
+        featured: z.boolean().optional(),
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+      }).optional())
+      .query(({ input }) => getMaterials(input ?? {})),
+
     byId: publicProcedure
       .input(z.number())
       .query(async ({ input }) => {
         const material = await getMaterialById(input);
         if (!material) return null;
-        const stores = await getStoresForMaterial(input);
-        return { ...material, stores };
+        const prices = await getMaterialPrices(input);
+        return { ...material, prices };
       }),
-    search: publicProcedure
+
+    bySlug: publicProcedure
       .input(z.string())
       .query(async ({ input }) => {
-        return searchMaterials(input, 10);
+        const material = await getMaterialBySlug(input);
+        if (!material) return null;
+        const prices = await getMaterialPrices(material.id);
+        return { ...material, prices };
       }),
+
+    search: publicProcedure
+      .input(z.string())
+      .query(({ input }) => getMaterials({ search: input, limit: 10 })),
   }),
 
-  categories: router({
+  // ─── Tools ─────────────────────────────────────────────────────────────────
+  toolCategories: router({
+    list: publicProcedure.query(() => getToolCategories()),
+  }),
+
+  tools: router({
     list: publicProcedure
-      .query(async () => {
-        return getCategories();
-      }),
-  }),
+      .input(z.object({
+        toolCategoryId: z.number().optional(),
+        search: z.string().optional(),
+        powerType: z.enum(["corded", "battery", "manual", "pneumatic", "hydraulic"]).optional(),
+        professionLevel: z.enum(["beginner", "intermediate", "professional"]).optional(),
+        featured: z.boolean().optional(),
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+      }).optional())
+      .query(({ input }) => getTools(input ?? {})),
 
-  knowledgeBase: router({
-    articles: publicProcedure
-      .input(z.object({ categoryId: z.number().optional(), featured: z.boolean().default(false), limit: z.number().default(10), offset: z.number().default(0) }).optional())
-      .query(async ({ input }) => {
-        return getKnowledgeBaseArticles(input?.categoryId, input?.featured, input?.limit, input?.offset);
-      }),
     byId: publicProcedure
       .input(z.number())
       .query(async ({ input }) => {
-        return getKnowledgeBaseArticleById(input);
+        const tool = await getToolById(input);
+        if (!tool) return null;
+        const prices = await getToolPrices(input);
+        return { ...tool, prices };
       }),
+
+    search: publicProcedure
+      .input(z.string())
+      .query(({ input }) => getTools({ search: input, limit: 10 })),
   }),
 
-  calculators: calculatorsRouter,
-  partners: partnerRouter,
-  tier2: tier2Router,
-  tier3: tier3Router,
-  chatbots: chatbotsRouter,
-  billing: businessModelRouter,
+  // ─── Knowledge Base ────────────────────────────────────────────────────────
+  knowledgeBase: router({
+    articles: publicProcedure
+      .input(z.object({
+        categoryId: z.number().optional(),
+        featured: z.boolean().optional(),
+        search: z.string().optional(),
+        limit: z.number().min(1).max(50).default(10),
+        offset: z.number().min(0).default(0),
+      }).optional())
+      .query(({ input }) => getKnowledgeBaseArticles(input ?? {})),
+
+    byId: publicProcedure
+      .input(z.number())
+      .query(({ input }) => getKnowledgeBaseArticleById(input)),
+  }),
+
+  // ─── Calculators ───────────────────────────────────────────────────────────
+  calculators: router({
+    list: publicProcedure
+      .input(z.object({
+        categorySlug: z.string().optional(),
+        featured: z.boolean().optional(),
+        limit: z.number().default(50),
+      }).optional())
+      .query(({ input }) => getCalculators(input ?? {})),
+  }),
+
+  // ─── Global Search ─────────────────────────────────────────────────────────
+  search: router({
+    global: publicProcedure
+      .input(z.string().min(1).max(200))
+      .query(({ input }) => globalSearch(input, 8)),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
