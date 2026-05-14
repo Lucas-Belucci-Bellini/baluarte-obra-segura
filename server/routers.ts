@@ -13,6 +13,8 @@ import {
   listProjects, getProjectById, createProject, updateProject, deleteProject,
   addProjectItem, updateProjectItem, removeProjectItem,
   listAlerts, getUnreadAlerts, getUnreadAlertsSummary, markAlertRead, markAllAlertsRead,
+  createConversation, listConversations, getConversationById, getConversationMessages,
+  updateConversationTitle, deleteConversation,
 } from "./db";
 
 const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid decimal");
@@ -286,6 +288,44 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         await updateSavedItemNotes(ctx.user.id, input.savedItemId, input.notes);
+        return { success: true } as const;
+      }),
+  }),
+
+  // ─── Chat ──────────────────────────────────────────────────────────────────
+  chat: router({
+    conversations: protectedProcedure.query(({ ctx }) => listConversations(ctx.user.id)),
+
+    conversationMessages: protectedProcedure
+      .input(z.object({ conversationId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const conv = await getConversationById(ctx.user.id, input.conversationId);
+        if (!conv) return null;
+        const messages = await getConversationMessages(input.conversationId, 100);
+        return { conversation: conv, messages };
+      }),
+
+    createConversation: protectedProcedure
+      .input(z.object({ language: z.string().max(10).optional() }).optional())
+      .mutation(async ({ ctx, input }) => {
+        const id = await createConversation(ctx.user.id, input?.language ?? "PT");
+        return { id } as const;
+      }),
+
+    renameConversation: protectedProcedure
+      .input(z.object({
+        conversationId: z.number().int().positive(),
+        title: z.string().min(1).max(255),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await updateConversationTitle(ctx.user.id, input.conversationId, input.title);
+        return { success: true } as const;
+      }),
+
+    deleteConversation: protectedProcedure
+      .input(z.object({ conversationId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteConversation(ctx.user.id, input.conversationId);
         return { success: true } as const;
       }),
   }),

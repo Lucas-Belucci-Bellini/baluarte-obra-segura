@@ -267,6 +267,32 @@ export const alertReads = mysqlTable("alertReads", {
 export type AlertRead = typeof alertReads.$inferSelect;
 export type InsertAlertRead = typeof alertReads.$inferInsert;
 
+// ─── Chat ────────────────────────────────────────────────────────────────────
+
+export const chatConversations = mysqlTable("chatConversations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 255 }).default("Nova conversa").notNull(),
+  language: varchar("language", { length: 10 }).default("PT").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ChatConversation = typeof chatConversations.$inferSelect;
+export type InsertChatConversation = typeof chatConversations.$inferInsert;
+
+export const chatMessages = mysqlTable("chatMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: int("conversationId").notNull(),
+  role: mysqlEnum("role", ["user", "assistant"]).notNull(),
+  content: text("content").notNull(),
+  tokensUsed: int("tokensUsed"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
 // Legacy tables kept for compatibility
 export const partners = mysqlTable("partners", {
   id: int("id").autoincrement().primaryKey(),

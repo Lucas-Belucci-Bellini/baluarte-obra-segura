@@ -8,6 +8,7 @@ import {
   knowledgeBaseArticles, calculators,
   savedItems, projects, projectItems,
   safetyAlerts, alertReads,
+  chatConversations, chatMessages,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -594,6 +595,68 @@ export async function markAllAlertsRead(userId: number) {
   const unread = await getUnreadAlerts(userId, 1000);
   if (unread.length === 0) return;
   await db.insert(alertReads).values(unread.map((a: any) => ({ userId, alertId: a.id })));
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+export async function createConversation(userId: number, language = "PT", title = "Nova conversa") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(chatConversations).values({ userId, language, title });
+  return (result as any).insertId as number;
+}
+
+export async function listConversations(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(chatConversations)
+    .where(eq(chatConversations.userId, userId))
+    .orderBy(desc(chatConversations.updatedAt))
+    .limit(50);
+}
+
+export async function getConversationById(userId: number, conversationId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(chatConversations)
+    .where(and(eq(chatConversations.id, conversationId), eq(chatConversations.userId, userId)))
+    .limit(1);
+  return rows[0];
+}
+
+export async function getConversationMessages(conversationId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(chatMessages)
+    .where(eq(chatMessages.conversationId, conversationId))
+    .orderBy(asc(chatMessages.createdAt))
+    .limit(limit);
+}
+
+export async function saveChatMessage(conversationId: number, role: "user" | "assistant", content: string, tokensUsed?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(chatMessages).values({ conversationId, role, content, tokensUsed });
+  await db.update(chatConversations)
+    .set({ updatedAt: new Date() })
+    .where(eq(chatConversations.id, conversationId));
+  return (result as any).insertId as number;
+}
+
+export async function updateConversationTitle(userId: number, conversationId: number, title: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(chatConversations)
+    .set({ title })
+    .where(and(eq(chatConversations.id, conversationId), eq(chatConversations.userId, userId)));
+}
+
+export async function deleteConversation(userId: number, conversationId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(chatMessages).where(eq(chatMessages.conversationId, conversationId));
+  await db.delete(chatConversations)
+    .where(and(eq(chatConversations.id, conversationId), eq(chatConversations.userId, userId)));
 }
 
 // ─── Global search ───────────────────────────────────────────────────────────

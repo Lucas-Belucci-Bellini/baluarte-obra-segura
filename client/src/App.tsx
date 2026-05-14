@@ -16,6 +16,8 @@ import Saved from "./pages/Saved";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import Alerts from "./pages/Alerts";
+import Chat from "./pages/Chat";
+import { ChatWidget } from "./components/ChatWidget";
 
 function Router() {
   return (
@@ -32,6 +34,7 @@ function Router() {
       <Route path="/projects" component={Projects} />
       <Route path="/projects/:id" component={ProjectDetail} />
       <Route path="/alerts" component={Alerts} />
+      <Route path="/chat" component={Chat} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -45,6 +48,7 @@ function App() {
         <TooltipProvider>
           <Toaster theme="dark" />
           <Router />
+          <ChatWidget />
         </TooltipProvider>
       </LanguageProvider>
     </ErrorBoundary>
