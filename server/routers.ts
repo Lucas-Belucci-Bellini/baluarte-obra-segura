@@ -12,12 +12,14 @@ import {
   listSavedItems, listSavedItemKeys, toggleSavedItem, updateSavedItemNotes,
   listProjects, getProjectById, createProject, updateProject, deleteProject,
   addProjectItem, updateProjectItem, removeProjectItem,
+  listAlerts, getUnreadAlerts, getUnreadAlertsSummary, markAlertRead, markAllAlertsRead,
 } from "./db";
 
 const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid decimal");
 const projectTypeEnum = z.enum(["residential", "commercial", "industrial", "rural", "renovation", "other"]);
 const projectStatusEnum = z.enum(["planning", "active", "completed", "archived"]);
 const projectItemTypeEnum = z.enum(["material", "tool"]);
+const alertSeverityEnum = z.enum(["critical", "warning", "info"]);
 
 export const appRouter = router({
   system: systemRouter,
@@ -147,6 +149,35 @@ export const appRouter = router({
         limit: z.number().default(50),
       }).optional())
       .query(({ input }) => getCalculators(input ?? {})),
+  }),
+
+  // ─── Safety alerts ─────────────────────────────────────────────────────────
+  alerts: router({
+    list: publicProcedure
+      .input(z.object({
+        severity: alertSeverityEnum.optional(),
+        limit: z.number().int().min(1).max(100).default(50),
+        offset: z.number().int().min(0).default(0),
+      }).optional())
+      .query(({ input }) => listAlerts(input ?? {})),
+
+    unreadSummary: protectedProcedure.query(({ ctx }) => getUnreadAlertsSummary(ctx.user.id)),
+
+    unread: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(50).default(10) }).optional())
+      .query(({ ctx, input }) => getUnreadAlerts(ctx.user.id, input?.limit ?? 10)),
+
+    markRead: protectedProcedure
+      .input(z.object({ alertId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await markAlertRead(ctx.user.id, input.alertId);
+        return { success: true } as const;
+      }),
+
+    markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+      await markAllAlertsRead(ctx.user.id);
+      return { success: true } as const;
+    }),
   }),
 
   // ─── Global Search ─────────────────────────────────────────────────────────

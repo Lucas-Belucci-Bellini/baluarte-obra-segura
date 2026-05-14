@@ -12,7 +12,7 @@ async function run(sql, params = []) {
 
 console.log('🗑️  Clearing old data...');
 await run('SET FOREIGN_KEY_CHECKS = 0');
-for (const t of ['materialPrices','toolPrices','savedItems','tools','toolCategories','materials','stores','categories','knowledgeBaseArticles','calculators']) {
+for (const t of ['alertReads','safetyAlerts','materialPrices','toolPrices','savedItems','tools','toolCategories','materials','stores','categories','knowledgeBaseArticles','calculators']) {
   await run(`DELETE FROM \`${t}\``);
   await run(`ALTER TABLE \`${t}\` AUTO_INCREMENT = 1`);
 }
@@ -1146,6 +1146,105 @@ for (const c of calcs) {
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// SAFETY ALERTS
+// ──────────────────────────────────────────────────────────────────────────────
+console.log('🚨 Seeding safety alerts...');
+await run('DELETE FROM `safetyAlerts`');
+await run('ALTER TABLE `safetyAlerts` AUTO_INCREMENT = 1');
+
+const safetyAlertsData = [
+  {
+    slug: 'recall-cimento-cp-ii-lote-2024',
+    severity: 'critical',
+    titlePortuguese: 'Recall: Cimento CP II — Lote com resistência abaixo do especificado',
+    titleEnglish: 'Recall: CP II Cement — Batch with below-spec compressive strength',
+    contentPortuguese: 'Lotes do cimento CP II-E 32 fabricados entre agosto e outubro de 2024 apresentaram resistência à compressão abaixo dos 32 MPa especificados na NBR 11578. Obra que utilizou esses lotes deve suspender estrutura e acionar fabricante. Identificar pelo número de lote impresso no saco (LT24-08xx a LT24-10xx).',
+    contentEnglish: 'Batches of CP II-E 32 cement manufactured between August and October 2024 showed compressive strength below the 32 MPa required by NBR 11578. Sites using these batches should suspend structural work and contact the manufacturer. Identify by the batch number printed on the bag (LT24-08xx to LT24-10xx).',
+    source: 'ABCP / Inmetro',
+    publishedAt: new Date('2024-11-05T09:00:00Z'),
+  },
+  {
+    slug: 'nbr-6118-2024-revisao',
+    severity: 'warning',
+    titlePortuguese: 'NBR 6118 revisada — Novas regras para armadura de concreto',
+    titleEnglish: 'NBR 6118 revised — New rules for concrete reinforcement',
+    contentPortuguese: 'A ABNT publicou em setembro de 2024 a revisão da NBR 6118 (Projeto de Estruturas de Concreto). A versão 2024 altera os coeficientes de segurança parciais e os requisitos de cobrimento mínimo de armadura. Projetos em andamento devem ser revisados por engenheiro responsável antes de continuar a execução.',
+    contentEnglish: 'ABNT published a revision of NBR 6118 (Concrete Structures Design) in September 2024. The 2024 version changes partial safety factors and minimum reinforcement cover requirements. Ongoing projects should be reviewed by the responsible engineer before continuing.',
+    source: 'ABNT',
+    publishedAt: new Date('2024-09-20T08:00:00Z'),
+  },
+  {
+    slug: 'amianto-proibicao-nacional-2024',
+    severity: 'critical',
+    titlePortuguese: 'Uso de amianto totalmente proibido no Brasil',
+    titleEnglish: 'Asbestos completely banned in Brazil',
+    contentPortuguese: 'O STF confirmou a proibição total do uso, comercialização e exportação de amianto crisotila no Brasil. Telhas, caixas d\'água e outros produtos que ainda contenham amianto devem ser substituídos. A exposição ao amianto causa mesotelioma e outros cânceres — qualquer remoção exige empresa especializada em EPI adequado.',
+    contentEnglish: 'Brazil\'s Supreme Court confirmed the complete ban on the use, commercialization and export of chrysotile asbestos. Roofing tiles, water tanks and other products still containing asbestos must be replaced. Asbestos exposure causes mesothelioma and other cancers — any removal requires a specialized company with proper PPE.',
+    source: 'STF / ABNT',
+    publishedAt: new Date('2024-03-15T10:00:00Z'),
+  },
+  {
+    slug: 'tinta-chumbo-alerta-2024',
+    severity: 'warning',
+    titlePortuguese: 'Tintas antigas com chumbo — risco em reformas',
+    titleEnglish: 'Old lead-based paints — risk during renovations',
+    contentPortuguese: 'Casas construídas antes de 1990 podem ter camadas de tinta com chumbo (óxido de chumbo era usado como pigmento). Durante lixamento ou remoção, partículas de chumbo são inaladas e causam saturnismo. Use máscara PFF2, óculos e descarte corretamente os resíduos conforme NBR 10004.',
+    contentEnglish: 'Homes built before 1990 may have layers of lead-based paint (lead oxide was used as a pigment). During sanding or removal, lead particles are inhaled and cause lead poisoning. Use PFF2 mask, goggles and dispose of waste correctly per NBR 10004.',
+    source: 'ANVISA',
+    publishedAt: new Date('2024-07-10T12:00:00Z'),
+  },
+  {
+    slug: 'fio-eletrico-cobre-imitacao-2024',
+    severity: 'critical',
+    titlePortuguese: 'Alerta: cabos elétricos com núcleo de aço coberto — risco de incêndio',
+    titleEnglish: 'Alert: steel-core copper-plated cables — fire hazard',
+    contentPortuguese: 'Fiscalizações identificaram cabos vendidos como "cobre" que na verdade têm núcleo de aço com fina camada de cobre (CCA — Copper Clad Aluminium/Steel). Esses cabos têm resistência 3× maior, superaquecem e causam incêndios. Exija laudo do fabricante e verifique o peso: 1 metro de cabo 2,5mm² de cobre puro pesa ~22g.',
+    contentEnglish: 'Inspections identified cables sold as "copper" that actually have a steel core with a thin copper layer (CCA — Copper Clad Steel). These cables have 3× higher resistance, overheat and cause fires. Demand manufacturer certification and check weight: 1 meter of genuine 2.5mm² copper cable weighs ~22g.',
+    source: 'INMETRO / PROCON-SP',
+    publishedAt: new Date('2024-10-22T14:00:00Z'),
+  },
+  {
+    slug: 'solventes-cheiro-forte-ventilacao',
+    severity: 'info',
+    titlePortuguese: 'Lembrete: solventes e tintas — ventilação obrigatória',
+    titleEnglish: 'Reminder: solvents and paints — mandatory ventilation',
+    contentPortuguese: 'Ambientes fechados com uso de solventes orgânicos (thinner, aguarrás, resinas epóxi) acumulam vapores inflamáveis e tóxicos. Sempre abra janelas, use máscara com filtro para vapores orgânicos (tipo A2) e jamais use chama aberta ou faíscas elétricas na mesma área. Limite de exposição: 8h/dia conforme NR-15.',
+    contentEnglish: 'Enclosed spaces with organic solvents (thinner, turpentine, epoxy resins) accumulate flammable and toxic vapors. Always open windows, use a mask with organic vapor filter (type A2) and never use open flames or electric sparks in the same area. Exposure limit: 8h/day per NR-15.',
+    source: 'NR-15 / ABNT',
+    publishedAt: new Date('2024-06-01T08:00:00Z'),
+  },
+  {
+    slug: 'impermeabilizante-manta-asfaltica-uv',
+    severity: 'info',
+    titlePortuguese: 'Manta asfáltica: não expor ao sol sem proteção UV',
+    titleEnglish: 'Asphalt membrane: do not expose to sun without UV protection',
+    contentPortuguese: 'Mantas asfálticas sem proteção UV degradam em 18-24 meses sob exposição solar direta, perdendo estanqueidade. Aplique sempre a proteção mecânica (argamassa ou deck) ou escolha manta com alumínio ou ardósia. Produto correto: ABNT NBR 9952 para impermeabilização de terraços.',
+    contentEnglish: 'Asphalt membranes without UV protection degrade within 18-24 months under direct sun exposure, losing waterproofing capacity. Always apply mechanical protection (mortar or deck) or choose membranes with aluminum or slate finish. Correct product: ABNT NBR 9952 for terrace waterproofing.',
+    source: 'ABNT NBR 9952',
+    publishedAt: new Date('2024-04-18T10:00:00Z'),
+  },
+  {
+    slug: 'escora-madeira-escoramento-laje',
+    severity: 'warning',
+    titlePortuguese: 'Escoramento de laje: cuidado com madeira úmida ou com defeitos',
+    titleEnglish: 'Slab shoring: beware of wet or defective lumber',
+    contentPortuguese: 'O colapso de escoramentos é responsável por 23% dos acidentes fatais em construção civil no Brasil (Fundacentro 2023). Use apenas madeira seca, sem nós grandes, rachamentos ou sinais de apodrecimento. Escore no mínimo 3 andares abaixo da laje concretada e só retire com aprovação do engenheiro responsável.',
+    contentEnglish: 'Shoring collapses account for 23% of fatal construction accidents in Brazil (Fundacentro 2023). Use only dry lumber, free from large knots, cracks or signs of rot. Shore at minimum 3 floors below the poured slab and only remove with the responsible engineer\'s approval.',
+    source: 'Fundacentro / NR-18',
+    publishedAt: new Date('2024-08-30T09:00:00Z'),
+  },
+];
+
+for (const a of safetyAlertsData) {
+  await run(
+    `INSERT INTO safetyAlerts (slug, severity, titlePortuguese, titleEnglish, contentPortuguese, contentEnglish, source, publishedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [a.slug, a.severity, a.titlePortuguese, a.titleEnglish, a.contentPortuguese, a.contentEnglish, a.source, a.publishedAt]
+  );
+}
+console.log(`  ✓ ${safetyAlertsData.length} safety alerts inserted`);
+
 await db.end();
 console.log('\n✅ Seed complete!');
 console.log(`  Categories: ${catData.length}`);
@@ -1155,3 +1254,4 @@ console.log(`  Tool categories: ${toolCatData.length}`);
 console.log(`  Tools: ${toolsData.length}`);
 console.log(`  KB Articles: ${articles.length}`);
 console.log(`  Calculators: ${calcs.length}`);
+console.log(`  Safety alerts: ${safetyAlertsData.length}`);

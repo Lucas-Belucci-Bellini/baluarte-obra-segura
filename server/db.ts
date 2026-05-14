@@ -1,11 +1,13 @@
 import { and, eq, like, or, desc, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { gt, sql, isNull } from "drizzle-orm";
 import {
   InsertUser, users,
   categories, materials, toolCategories, tools,
   stores, materialPrices, toolPrices,
   knowledgeBaseArticles, calculators,
   savedItems, projects, projectItems,
+  safetyAlerts, alertReads,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -516,6 +518,82 @@ export async function removeProjectItem(userId: number, projectItemId: number) {
   if (row.length === 0) return;
   await assertProjectOwner(db, userId, row[0].projectId);
   await db.delete(projectItems).where(eq(projectItems.id, projectItemId));
+}
+
+// ─── Safety alerts ───────────────────────────────────────────────────────────
+
+export type AlertSeverity = "critical" | "warning" | "info";
+
+function activeAlertCondition() {
+  const now = new Date();
+  return or(isNull(safetyAlerts.expiresAt), gt(safetyAlerts.expiresAt, now))!;
+}
+
+export async function listAlerts(opts?: { severity?: AlertSeverity; limit?: number; offset?: number }) {
+  const db = await getDb();
+  if (!db) return [];
+  const limit = opts?.limit ?? 50;
+  const offset = opts?.offset ?? 0;
+  const conditions = [activeAlertCondition()];
+  if (opts?.severity) conditions.push(eq(safetyAlerts.severity, opts.severity));
+  return (db.select().from(safetyAlerts) as any)
+    .where(and(...conditions))
+    .orderBy(desc(safetyAlerts.publishedAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getAlertById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(safetyAlerts).where(eq(safetyAlerts.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getUnreadAlerts(userId: number, limit = 10) {
+  const db = await getDb();
+  if (!db) return [];
+  const reads = await db.select({ alertId: alertReads.alertId }).from(alertReads)
+    .where(eq(alertReads.userId, userId));
+  const readIds = reads.map(r => r.alertId);
+
+  const conditions = [activeAlertCondition()];
+  if (readIds.length > 0) {
+    conditions.push(sql`${safetyAlerts.id} NOT IN (${sql.join(readIds.map(id => sql`${id}`), sql`, `)})`);
+  }
+  return (db.select().from(safetyAlerts) as any)
+    .where(and(...conditions))
+    .orderBy(desc(safetyAlerts.severity), desc(safetyAlerts.publishedAt))
+    .limit(limit);
+}
+
+export async function getUnreadAlertsSummary(userId: number) {
+  const db = await getDb();
+  if (!db) return { total: 0, critical: 0 };
+  const unread = await getUnreadAlerts(userId, 200);
+  return {
+    total: unread.length,
+    critical: unread.filter((a: any) => a.severity === "critical").length,
+  };
+}
+
+export async function markAlertRead(userId: number, alertId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select({ id: alertReads.id }).from(alertReads)
+    .where(and(eq(alertReads.userId, userId), eq(alertReads.alertId, alertId))!)
+    .limit(1);
+  if (existing.length === 0) {
+    await db.insert(alertReads).values({ userId, alertId });
+  }
+}
+
+export async function markAllAlertsRead(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const unread = await getUnreadAlerts(userId, 1000);
+  if (unread.length === 0) return;
+  await db.insert(alertReads).values(unread.map((a: any) => ({ userId, alertId: a.id })));
 }
 
 // ─── Global search ───────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import { Search, Menu, X, Zap, Globe, Wrench, BookOpen, Calculator, Package } fr
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { UserMenu } from '@/components/UserMenu';
+import { AlertBell } from '@/components/AlertBell';
 
 const NAV_LINKS = [
   { href: '/catalog', labelPT: 'Materiais', labelEN: 'Materials', icon: Package },
@@ -192,6 +193,7 @@ export function Navigation() {
             <span className="text-xs font-bold">{language}</span>
           </button>
 
+          <AlertBell />
           <UserMenu />
 
           <button className="btn btn-ghost btn-sm lg:hidden" onClick={() => setMenuOpen(!menuOpen)}>

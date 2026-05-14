@@ -235,6 +235,38 @@ export const calculators = mysqlTable("calculators", {
 export type Calculator = typeof calculators.$inferSelect;
 export type InsertCalculator = typeof calculators.$inferInsert;
 
+// ─── Safety alerts ───────────────────────────────────────────────────────────
+
+export const safetyAlerts = mysqlTable("safetyAlerts", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 200 }).notNull().unique(),
+  severity: mysqlEnum("severity", ["critical", "warning", "info"]).default("info").notNull(),
+  titlePortuguese: varchar("titlePortuguese", { length: 255 }).notNull(),
+  titleEnglish: varchar("titleEnglish", { length: 255 }).notNull(),
+  contentPortuguese: text("contentPortuguese").notNull(),
+  contentEnglish: text("contentEnglish").notNull(),
+  categoryId: int("categoryId"),
+  materialId: int("materialId"),
+  source: varchar("source", { length: 255 }),
+  sourceUrl: varchar("sourceUrl", { length: 500 }),
+  publishedAt: timestamp("publishedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SafetyAlert = typeof safetyAlerts.$inferSelect;
+export type InsertSafetyAlert = typeof safetyAlerts.$inferInsert;
+
+export const alertReads = mysqlTable("alertReads", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  alertId: int("alertId").notNull(),
+  readAt: timestamp("readAt").defaultNow().notNull(),
+});
+
+export type AlertRead = typeof alertReads.$inferSelect;
+export type InsertAlertRead = typeof alertReads.$inferInsert;
+
 // Legacy tables kept for compatibility
 export const partners = mysqlTable("partners", {
   id: int("id").autoincrement().primaryKey(),

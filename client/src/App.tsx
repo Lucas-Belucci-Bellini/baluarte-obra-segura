@@ -15,6 +15,7 @@ import Account from "./pages/Account";
 import Saved from "./pages/Saved";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
+import Alerts from "./pages/Alerts";
 
 function Router() {
   return (
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/saved" component={Saved} />
       <Route path="/projects" component={Projects} />
       <Route path="/projects/:id" component={ProjectDetail} />
+      <Route path="/alerts" component={Alerts} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
