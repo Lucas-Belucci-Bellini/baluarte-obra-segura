@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Search, Menu, X, Zap, Globe, Wrench, BookOpen, Calculator, Package, MessageCircle } from 'lucide-react';
+import { Search, Menu, X, Zap, Globe, Wrench, BookOpen, Calculator, Package, MessageCircle, GitCompareArrows } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trpc } from '@/lib/trpc';
 import { UserMenu } from '@/components/UserMenu';
@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: '/tools', labelPT: 'Ferramentas', labelEN: 'Tools', icon: Wrench },
   { href: '/calculators', labelPT: 'Calculadoras', labelEN: 'Calculators', icon: Calculator },
   { href: '/knowledge-base', labelPT: 'Guia de Segurança', labelEN: 'Safety Guide', icon: BookOpen },
+  { href: '/comparar', labelPT: 'Comparar', labelEN: 'Compare', icon: GitCompareArrows },
   { href: '/chat', labelPT: 'IA', labelEN: 'AI', icon: MessageCircle },
 ];
 

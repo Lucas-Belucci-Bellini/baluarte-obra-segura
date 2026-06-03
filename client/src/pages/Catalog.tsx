@@ -3,6 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Navigation } from '@/components/Navigation';
 import { SaveButton } from '@/components/SaveButton';
 import { AddToProjectButton } from '@/components/AddToProjectButton';
+import { CompareButton } from '@/components/CompareButton';
 import { trpc } from '@/lib/trpc';
 import { Search, Package, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { Link } from 'wouter';
@@ -35,6 +36,7 @@ function MaterialCard({ material, language }: { material: any; language: string 
   return (
     <div className="card card-interactive" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', height: '100%', position: 'relative' }}>
       <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 2, display: 'flex', gap: 4 }}>
+        <CompareButton itemType="material" itemId={material.id} iconOnly />
         <AddToProjectButton itemType="material" itemId={material.id} iconOnly />
         <SaveButton itemType="material" itemId={material.id} iconOnly />
       </div>

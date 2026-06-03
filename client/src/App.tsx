@@ -17,7 +17,10 @@ import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import Alerts from "./pages/Alerts";
 import Chat from "./pages/Chat";
+import Compare from "./pages/Compare";
 import { ChatWidget } from "./components/ChatWidget";
+import { CompareBar } from "./components/CompareBar";
+import { CompareProvider } from "./contexts/CompareContext";
 
 function Router() {
   return (
@@ -35,6 +38,7 @@ function Router() {
       <Route path="/projects/:id" component={ProjectDetail} />
       <Route path="/alerts" component={Alerts} />
       <Route path="/chat" component={Chat} />
+      <Route path="/comparar" component={Compare} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -45,11 +49,14 @@ function App() {
   return (
     <ErrorBoundary>
       <LanguageProvider>
-        <TooltipProvider>
-          <Toaster theme="dark" />
-          <Router />
-          <ChatWidget />
-        </TooltipProvider>
+        <CompareProvider>
+          <TooltipProvider>
+            <Toaster theme="dark" />
+            <Router />
+            <CompareBar />
+            <ChatWidget />
+          </TooltipProvider>
+        </CompareProvider>
       </LanguageProvider>
     </ErrorBoundary>
   );

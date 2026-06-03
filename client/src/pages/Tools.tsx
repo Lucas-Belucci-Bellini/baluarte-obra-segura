@@ -3,6 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Navigation } from '@/components/Navigation';
 import { SaveButton } from '@/components/SaveButton';
 import { AddToProjectButton } from '@/components/AddToProjectButton';
+import { CompareButton } from '@/components/CompareButton';
 import { trpc } from '@/lib/trpc';
 import { Wrench, Zap, Battery, Hand, Wind, Droplets, Search, SlidersHorizontal, ChevronDown } from 'lucide-react';
 
@@ -45,6 +46,7 @@ function ToolCard({ tool, language }: { tool: any; language: string }) {
   return (
     <div className="card card-interactive" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
       <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 2, display: 'flex', gap: 4 }}>
+        <CompareButton itemType="tool" itemId={tool.id} iconOnly />
         <AddToProjectButton itemType="tool" itemId={tool.id} iconOnly />
         <SaveButton itemType="tool" itemId={tool.id} iconOnly />
       </div>
