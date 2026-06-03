@@ -16,6 +16,7 @@ import {
   getToolCategories, getTools, getToolById,
   getKnowledgeBaseArticles, getCalculators, globalSearch,
   createConversation, getConversationById, getConversationMessages, saveChatMessage,
+  getPartnerByApiKey, upsertPartnerPrices, getPartnerProducts, getPartnerSyncLogs,
 } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -118,6 +119,67 @@ async function startServer() {
   });
 
   app.use("/api/v1", api);
+
+  // ─── B2B Partner REST API ──────────────────────────────────────────────────
+  const b2b = express.Router();
+
+  async function authPartner(req: express.Request, res: express.Response): Promise<Awaited<ReturnType<typeof getPartnerByApiKey>> | null> {
+    const key = (req.headers["x-api-key"] as string) || (req.headers["authorization"] as string)?.replace("Bearer ", "");
+    if (!key) { res.status(401).json({ error: "Missing X-API-Key header" }); return null; }
+    const partner = await getPartnerByApiKey(key);
+    if (!partner) { res.status(401).json({ error: "Invalid API key" }); return null; }
+    if (partner.status !== "active") { res.status(403).json({ error: `Account is ${partner.status}. Contact support.` }); return null; }
+    return partner;
+  }
+
+  b2b.get("/me", async (req, res) => {
+    const partner = await authPartner(req, res);
+    if (!partner) return;
+    const { apiSecret, ...safe } = partner;
+    res.json(safe);
+  });
+
+  b2b.post("/prices", async (req, res) => {
+    const partner = await authPartner(req, res);
+    if (!partner) return;
+
+    const { items } = req.body as { items?: unknown[] };
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "Body must be { items: [...] }" });
+    }
+    if (items.length > 500) {
+      return res.status(400).json({ error: "Max 500 items per request" });
+    }
+
+    // Rate limit check
+    const { checkAndIncrementQuota } = await import("../db");
+    const { allowed, remaining } = await checkAndIncrementQuota(partner.id);
+    if (!allowed) {
+      return res.status(429).json({ error: "Daily quota exceeded", tier: partner.tier, quota: partner.dailyQuota });
+    }
+
+    const validated = (items as any[]).filter(i =>
+      (i.materialId || i.toolId) && i.price && !isNaN(parseFloat(i.price))
+    );
+
+    const { updated, failed } = await upsertPartnerPrices(partner.id, validated);
+    res.json({ success: true, updated, failed, remaining });
+  });
+
+  b2b.get("/products", async (req, res) => {
+    const partner = await authPartner(req, res);
+    if (!partner) return;
+    const limit = Math.min(parseInt(req.query.limit as string || "50"), 500);
+    res.json(await getPartnerProducts(partner.id, limit));
+  });
+
+  b2b.get("/sync-log", async (req, res) => {
+    const partner = await authPartner(req, res);
+    if (!partner) return;
+    res.json(await getPartnerSyncLogs(partner.id, 20));
+  });
+
+  app.use("/api/v1/partner", b2b);
 
   // ─── Chat SSE streaming ────────────────────────────────────────────────────
   app.post("/api/chat/stream", async (req, res) => {

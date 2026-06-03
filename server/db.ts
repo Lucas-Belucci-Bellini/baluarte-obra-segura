@@ -9,7 +9,9 @@ import {
   savedItems, projects, projectItems,
   safetyAlerts, alertReads,
   chatConversations, chatMessages,
+  partners, partnerProducts, partnerSyncLogs,
 } from "../drizzle/schema";
+import { randomBytes } from "crypto";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -657,6 +659,130 @@ export async function deleteConversation(userId: number, conversationId: number)
   await db.delete(chatMessages).where(eq(chatMessages.conversationId, conversationId));
   await db.delete(chatConversations)
     .where(and(eq(chatConversations.id, conversationId), eq(chatConversations.userId, userId)));
+}
+
+// ─── B2B Partners ────────────────────────────────────────────────────────────
+
+const TIER_QUOTAS: Record<string, number> = { free: 100, pro: 10000, enterprise: 1000000 };
+
+function generateApiKey() {
+  return `wbp_${randomBytes(20).toString('hex')}`;
+}
+
+export async function registerPartner(data: {
+  name: string; email: string; companyName?: string; cnpj?: string; website?: string; description?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select({ id: partners.id }).from(partners).where(eq(partners.email, data.email)).limit(1);
+  if (existing.length > 0) throw new Error("Email already registered");
+  const apiKey = generateApiKey();
+  const apiSecret = randomBytes(32).toString('hex');
+  const result = await db.insert(partners).values({
+    ...data, apiKey, apiSecret, tier: "free", status: "pending", dailyQuota: 100, dailyUsage: 0,
+  });
+  return { id: (result as any).insertId as number, apiKey };
+}
+
+export async function getPartnerByApiKey(apiKey: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(partners).where(eq(partners.apiKey, apiKey)).limit(1);
+  return rows[0];
+}
+
+export async function getPartnerByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(partners).where(eq(partners.email, email)).limit(1);
+  return rows[0];
+}
+
+export async function getPartnerById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(partners).where(eq(partners.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function regenerateApiKey(partnerId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const newKey = generateApiKey();
+  await db.update(partners).set({ apiKey: newKey }).where(eq(partners.id, partnerId));
+  return newKey;
+}
+
+export async function checkAndIncrementQuota(partnerId: number): Promise<{ allowed: boolean; remaining: number }> {
+  const db = await getDb();
+  if (!db) return { allowed: false, remaining: 0 };
+  const rows = await db.select().from(partners).where(eq(partners.id, partnerId)).limit(1);
+  if (!rows[0]) return { allowed: false, remaining: 0 };
+  const partner = rows[0];
+
+  // Reset quota if it's a new day (UTC)
+  const now = new Date();
+  const lastReset = new Date(partner.lastQuotaReset);
+  if (now.toUTCString().slice(0, 16) !== lastReset.toUTCString().slice(0, 16)) {
+    await db.update(partners).set({ dailyUsage: 0, lastQuotaReset: now }).where(eq(partners.id, partnerId));
+    partner.dailyUsage = 0;
+  }
+
+  const quota = TIER_QUOTAS[partner.tier] ?? 100;
+  if (partner.dailyUsage >= quota) return { allowed: false, remaining: 0 };
+
+  await db.update(partners).set({ dailyUsage: partner.dailyUsage + 1 }).where(eq(partners.id, partnerId));
+  return { allowed: true, remaining: quota - partner.dailyUsage - 1 };
+}
+
+export async function upsertPartnerPrices(partnerId: number, items: Array<{
+  materialId?: number; toolId?: number; sku?: string; price: string;
+  unit?: string; stockQty?: number; storeUrl?: string;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  let updated = 0; let failed = 0;
+
+  for (const item of items) {
+    try {
+      if (!item.materialId && !item.toolId) { failed++; continue; }
+      // Check if existing record
+      const cond = item.materialId
+        ? and(eq(partnerProducts.partnerId, partnerId), eq(partnerProducts.materialId, item.materialId))!
+        : and(eq(partnerProducts.partnerId, partnerId), eq(partnerProducts.toolId, item.toolId!))!;
+
+      const existing = await db.select({ id: partnerProducts.id }).from(partnerProducts).where(cond).limit(1);
+      if (existing.length > 0) {
+        await db.update(partnerProducts)
+          .set({ price: item.price, sku: item.sku, unit: item.unit, stockQty: item.stockQty, storeUrl: item.storeUrl, lastSync: new Date() })
+          .where(eq(partnerProducts.id, existing[0].id));
+      } else {
+        await db.insert(partnerProducts).values({ partnerId, ...item, lastSync: new Date() });
+      }
+      updated++;
+    } catch { failed++; }
+  }
+
+  await db.insert(partnerSyncLogs).values({ partnerId, itemsSubmitted: items.length, itemsUpdated: updated, itemsFailed: failed });
+  return { updated, failed };
+}
+
+export async function getPartnerProducts(partnerId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(partnerProducts)
+    .where(eq(partnerProducts.partnerId, partnerId))
+    .orderBy(desc(partnerProducts.lastSync))
+    .limit(limit);
+}
+
+export async function getPartnerSyncLogs(partnerId: number, limit = 10) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(partnerSyncLogs)
+    .where(eq(partnerSyncLogs.partnerId, partnerId))
+    .orderBy(desc(partnerSyncLogs.createdAt))
+    .limit(limit);
 }
 
 // ─── Global search ───────────────────────────────────────────────────────────

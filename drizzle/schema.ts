@@ -293,18 +293,55 @@ export const chatMessages = mysqlTable("chatMessages", {
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = typeof chatMessages.$inferInsert;
 
-// Legacy tables kept for compatibility
+// ─── B2B Partners ─────────────────────────────────────────────────────────────
+
 export const partners = mysqlTable("partners", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 320 }).notNull(),
-  apiKey: varchar("apiKey", { length: 64 }).notNull().unique(),
-  apiSecret: varchar("apiSecret", { length: 64 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  companyName: varchar("companyName", { length: 255 }),
+  cnpj: varchar("cnpj", { length: 18 }),
+  website: varchar("website", { length: 500 }),
+  description: text("description"),
+  apiKey: varchar("apiKey", { length: 80 }).notNull().unique(),
+  apiSecret: varchar("apiSecret", { length: 80 }).notNull(),
   tier: mysqlEnum("tier", ["free", "pro", "enterprise"]).default("free").notNull(),
   status: mysqlEnum("status", ["pending", "active", "suspended", "inactive"]).default("pending").notNull(),
+  dailyQuota: int("dailyQuota").default(100).notNull(),
+  dailyUsage: int("dailyUsage").default(0).notNull(),
+  lastQuotaReset: timestamp("lastQuotaReset").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type Partner = typeof partners.$inferSelect;
 export type InsertPartner = typeof partners.$inferInsert;
+
+export const partnerProducts = mysqlTable("partnerProducts", {
+  id: int("id").autoincrement().primaryKey(),
+  partnerId: int("partnerId").notNull(),
+  materialId: int("materialId"),
+  toolId: int("toolId"),
+  sku: varchar("sku", { length: 100 }),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  unit: varchar("unit", { length: 50 }),
+  stockQty: int("stockQty"),
+  storeUrl: varchar("storeUrl", { length: 500 }),
+  lastSync: timestamp("lastSync").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PartnerProduct = typeof partnerProducts.$inferSelect;
+export type InsertPartnerProduct = typeof partnerProducts.$inferInsert;
+
+export const partnerSyncLogs = mysqlTable("partnerSyncLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  partnerId: int("partnerId").notNull(),
+  itemsSubmitted: int("itemsSubmitted").default(0).notNull(),
+  itemsUpdated: int("itemsUpdated").default(0).notNull(),
+  itemsFailed: int("itemsFailed").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PartnerSyncLog = typeof partnerSyncLogs.$inferSelect;
+export type InsertPartnerSyncLog = typeof partnerSyncLogs.$inferInsert;

@@ -15,6 +15,8 @@ import {
   listAlerts, getUnreadAlerts, getUnreadAlertsSummary, markAlertRead, markAllAlertsRead,
   createConversation, listConversations, getConversationById, getConversationMessages,
   updateConversationTitle, deleteConversation,
+  registerPartner, getPartnerByEmail, getPartnerById, regenerateApiKey,
+  getPartnerProducts, getPartnerSyncLogs,
 } from "./db";
 
 const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid decimal");
@@ -329,6 +331,57 @@ export const appRouter = router({
         return { success: true } as const;
       }),
   }),
+
+  // ─── B2B Partners ──────────────────────────────────────────────────────────
+  partners: router({
+    register: publicProcedure
+      .input(z.object({
+        name: z.string().min(2).max(120),
+        email: z.string().email().max(320),
+        companyName: z.string().min(2).max(255),
+        cnpj: z.string().max(18).optional(),
+        website: z.string().url().max(500).optional().or(z.literal('')),
+        description: z.string().max(1000).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, apiKey } = await registerPartner({
+          ...input,
+          website: input.website === '' ? undefined : input.website,
+        });
+        return { id, apiKey } as const;
+      }),
+
+    me: protectedProcedure.query(async ({ ctx }) => {
+      if (!ctx.user.email) return null;
+      return getPartnerByEmail(ctx.user.email);
+    }),
+
+    regenerateKey: protectedProcedure.mutation(async ({ ctx }) => {
+      if (!ctx.user.email) throw new Error('No email on account');
+      const partner = await getPartnerByEmail(ctx.user.email);
+      if (!partner) throw new Error('Not a registered partner');
+      const newKey = await regenerateApiKey(partner.id);
+      return { apiKey: newKey } as const;
+    }),
+
+    products: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(100).default(50) }).optional())
+      .query(async ({ ctx, input }) => {
+        if (!ctx.user.email) return [];
+        const partner = await getPartnerByEmail(ctx.user.email);
+        if (!partner) return [];
+        return getPartnerProducts(partner.id, input?.limit ?? 50);
+      }),
+
+    syncLogs: protectedProcedure.query(async ({ ctx }) => {
+      if (!ctx.user.email) return [];
+      const partner = await getPartnerByEmail(ctx.user.email);
+      if (!partner) return [];
+      return getPartnerSyncLogs(partner.id, 20);
+    }),
+  }),
 });
+
+export type AppRouter = typeof appRouter;
 
 export type AppRouter = typeof appRouter;

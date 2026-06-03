@@ -18,6 +18,8 @@ import ProjectDetail from "./pages/ProjectDetail";
 import Alerts from "./pages/Alerts";
 import Chat from "./pages/Chat";
 import Compare from "./pages/Compare";
+import PartnerSignup from "./pages/PartnerSignup";
+import PartnerDashboard from "./pages/PartnerDashboard";
 import { ChatWidget } from "./components/ChatWidget";
 import { CompareBar } from "./components/CompareBar";
 import { CompareProvider } from "./contexts/CompareContext";
@@ -39,6 +41,8 @@ function Router() {
       <Route path="/alerts" component={Alerts} />
       <Route path="/chat" component={Chat} />
       <Route path="/comparar" component={Compare} />
+      <Route path="/parceiros" component={PartnerSignup} />
+      <Route path="/partner/dashboard" component={PartnerDashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

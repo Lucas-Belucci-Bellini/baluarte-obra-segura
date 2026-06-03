@@ -12,7 +12,7 @@ async function run(sql, params = []) {
 
 console.log('🗑️  Clearing old data...');
 await run('SET FOREIGN_KEY_CHECKS = 0');
-for (const t of ['chatMessages','chatConversations','alertReads','safetyAlerts','materialPrices','toolPrices','savedItems','tools','toolCategories','materials','stores','categories','knowledgeBaseArticles','calculators']) {
+for (const t of ['partnerSyncLogs','partnerProducts','chatMessages','chatConversations','alertReads','safetyAlerts','materialPrices','toolPrices','savedItems','tools','toolCategories','materials','stores','categories','knowledgeBaseArticles','calculators']) {
   await run(`DELETE FROM \`${t}\``);
   await run(`ALTER TABLE \`${t}\` AUTO_INCREMENT = 1`);
 }
