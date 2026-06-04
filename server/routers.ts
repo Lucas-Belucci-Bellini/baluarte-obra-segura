@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -208,6 +209,13 @@ export const appRouter = router({
         budgetEstimate: decimalString.nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        const [user, existing] = await Promise.all([
+          getUserByOpenId(ctx.user.openId),
+          listProjects(ctx.user.id),
+        ]);
+        if ((user?.tier ?? "free") === "free" && existing.length >= 1) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "FREE_LIMIT_PROJECTS" });
+        }
         const id = await createProject(ctx.user.id, input);
         return { id } as const;
       }),
@@ -281,7 +289,17 @@ export const appRouter = router({
         itemType: z.enum(["material", "tool", "article", "calculator"]),
         itemId: z.number().int().positive(),
       }))
-      .mutation(({ ctx, input }) => toggleSavedItem(ctx.user.id, input.itemType, input.itemId)),
+      .mutation(async ({ ctx, input }) => {
+        const [user, keys] = await Promise.all([
+          getUserByOpenId(ctx.user.openId),
+          listSavedItemKeys(ctx.user.id),
+        ]);
+        const alreadySaved = keys.some(k => k.itemType === input.itemType && k.itemId === input.itemId);
+        if (!alreadySaved && (user?.tier ?? "free") === "free" && keys.length >= 5) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "FREE_LIMIT_SAVED_ITEMS" });
+        }
+        return toggleSavedItem(ctx.user.id, input.itemType, input.itemId);
+      }),
 
     notes: protectedProcedure
       .input(z.object({
@@ -381,7 +399,5 @@ export const appRouter = router({
     }),
   }),
 });
-
-export type AppRouter = typeof appRouter;
 
 export type AppRouter = typeof appRouter;

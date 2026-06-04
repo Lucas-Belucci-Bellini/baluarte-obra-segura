@@ -110,9 +110,15 @@ export default function Chat() {
 
       if (!res.ok || !res.body) {
         const err = await res.json().catch(() => ({ error: 'Error' }));
+        const msg = err.error === 'CHAT_TIER_REQUIRED'
+          ? t(
+              '🔒 O chatbot IA está disponível apenas nos planos **Pro** e **Enterprise**. [Ver planos →](/pricing)',
+              '🔒 The AI chatbot is only available on **Pro** and **Enterprise** plans. [See plans →](/pricing)'
+            )
+          : `⚠️ ${err.error ?? 'Error'}`;
         setMsgs(prev => {
           const next = [...prev];
-          next[next.length - 1] = { role: 'assistant', content: `⚠️ ${err.error ?? 'Error'}` };
+          next[next.length - 1] = { role: 'assistant', content: msg };
           return next;
         });
         setStreaming(false);

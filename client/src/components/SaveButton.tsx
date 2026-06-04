@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type MouseEvent } from 'react';
-import { Heart } from 'lucide-react';
+import { Heart, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -51,9 +51,22 @@ export function SaveButton({
     },
     onError: (err, _vars, ctx) => {
       utils.savedItems.keys.setData(undefined, ctx?.prev);
-      toast.error(language === 'PT' ? 'Não foi possível salvar' : 'Could not save', {
-        description: err.message,
-      });
+      if (err.message === 'FREE_LIMIT_SAVED_ITEMS') {
+        toast.error(language === 'PT' ? 'Limite de favoritos atingido' : 'Favorites limit reached', {
+          description: language === 'PT'
+            ? 'O plano gratuito suporta até 5 itens. Faça upgrade para Pro.'
+            : 'Free plan supports up to 5 items. Upgrade to Pro.',
+          action: {
+            label: language === 'PT' ? 'Ver planos' : 'See plans',
+            onClick: () => setLocation('/pricing'),
+          },
+          icon: <Zap className="w-4 h-4 text-orange-400" />,
+        });
+      } else {
+        toast.error(language === 'PT' ? 'Não foi possível salvar' : 'Could not save', {
+          description: err.message,
+        });
+      }
     },
     onSuccess: ({ saved }) => {
       const labels = label ?? {

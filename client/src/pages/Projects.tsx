@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Plus, FolderOpen, Archive, ArchiveRestore, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, FolderOpen, Archive, ArchiveRestore, Trash2, Loader2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { Navigation } from '@/components/Navigation';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -56,9 +56,22 @@ export default function Projects() {
       setShowCreate(false);
       setLocation(`/projects/${id}`);
     },
-    onError: err => toast.error(language === 'PT' ? 'Erro ao criar' : 'Failed to create', {
-      description: err.message,
-    }),
+    onError: err => {
+      if (err.message === 'FREE_LIMIT_PROJECTS') {
+        toast.error(language === 'PT' ? 'Limite de projetos atingido' : 'Projects limit reached', {
+          description: language === 'PT'
+            ? 'O plano gratuito permite 1 projeto. Faça upgrade para Pro.'
+            : 'Free plan allows 1 project. Upgrade to Pro.',
+          action: {
+            label: language === 'PT' ? 'Ver planos' : 'See plans',
+            onClick: () => setLocation('/pricing'),
+          },
+          icon: <Zap className="w-4 h-4 text-orange-400" />,
+        });
+      } else {
+        toast.error(language === 'PT' ? 'Erro ao criar' : 'Failed to create', { description: err.message });
+      }
+    },
   });
 
   const updateMutation = trpc.projects.update.useMutation({

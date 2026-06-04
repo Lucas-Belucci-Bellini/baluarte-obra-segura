@@ -73,6 +73,16 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function updateUserTier(
+  userId: number,
+  tier: "free" | "pro" | "enterprise",
+  tierExpiresAt?: Date | null
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ tier, tierExpiresAt: tierExpiresAt ?? null }).where(eq(users.id, userId));
+}
+
 export async function updateUserProfile(
   userId: number,
   patch: { name?: string | null; bio?: string | null; profession?: string | null; avatarUrl?: string | null }

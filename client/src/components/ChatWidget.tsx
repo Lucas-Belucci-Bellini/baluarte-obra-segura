@@ -67,9 +67,15 @@ export function ChatWidget() {
 
       if (!res.ok || !res.body) {
         const err = await res.json().catch(() => ({ error: 'Error' }));
+        const msg = err.error === 'CHAT_TIER_REQUIRED'
+          ? t(
+              '🔒 O chatbot IA está disponível apenas nos planos **Pro** e **Enterprise**. [Ver planos →](/pricing)',
+              '🔒 The AI chatbot is only available on **Pro** and **Enterprise** plans. [See plans →](/pricing)'
+            )
+          : (err.error ?? t('Erro ao conectar.', 'Connection error.'));
         setMsgs(prev => {
           const next = [...prev];
-          next[next.length - 1] = { role: 'assistant', content: err.error ?? t('Erro ao conectar.', 'Connection error.') };
+          next[next.length - 1] = { role: 'assistant', content: msg };
           return next;
         });
         setStreaming(false);
