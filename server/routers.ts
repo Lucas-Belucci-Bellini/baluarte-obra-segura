@@ -3,13 +3,13 @@ import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import {
   getCategories, getMaterials, getMaterialById, getMaterialBySlug, getMaterialPrices,
   getToolCategories, getTools, getToolById, getToolPrices,
   getKnowledgeBaseArticles, getKnowledgeBaseArticleById,
   getCalculators, globalSearch,
-  updateUserProfile, getUserByOpenId,
+  updateUserProfile, getUserByOpenId, updateUserTier,
   listSavedItems, listSavedItemKeys, toggleSavedItem, updateSavedItemNotes,
   listProjects, getProjectById, createProject, updateProject, deleteProject,
   addProjectItem, updateProjectItem, removeProjectItem,
@@ -18,6 +18,12 @@ import {
   updateConversationTitle, deleteConversation,
   registerPartner, getPartnerByEmail, getPartnerById, regenerateApiKey,
   getPartnerProducts, getPartnerSyncLogs,
+  getAdminMetrics, listAllUsers, adminUpdateUserRole,
+  adminCreateMaterial, adminUpdateMaterial, adminDeleteMaterial,
+  adminCreateTool, adminUpdateTool, adminDeleteTool,
+  adminCreateArticle, adminUpdateArticle, adminDeleteArticle,
+  adminCreateAlert, adminUpdateAlert, adminDeleteAlert,
+  listAllPartners, adminUpdatePartnerStatus,
 } from "./db";
 
 const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid decimal");
@@ -397,6 +403,195 @@ export const appRouter = router({
       if (!partner) return [];
       return getPartnerSyncLogs(partner.id, 20);
     }),
+  }),
+
+  // ─── Admin panel ───────────────────────────────────────────────────────────
+  admin: router({
+    metrics: adminProcedure.query(() => getAdminMetrics()),
+
+    // Users
+    listUsers: adminProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(200).default(50), offset: z.number().int().min(0).default(0) }).optional())
+      .query(({ input }) => listAllUsers(input?.limit ?? 50, input?.offset ?? 0)),
+
+    updateUserRole: adminProcedure
+      .input(z.object({ userId: z.number().int().positive(), role: z.enum(["user", "admin"]) }))
+      .mutation(async ({ input }) => {
+        await adminUpdateUserRole(input.userId, input.role);
+        return { success: true } as const;
+      }),
+
+    updateUserTier: adminProcedure
+      .input(z.object({
+        userId: z.number().int().positive(),
+        tier: z.enum(["free", "pro", "enterprise"]),
+        expiresInDays: z.number().int().positive().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const expiresAt = input.expiresInDays
+          ? new Date(Date.now() + input.expiresInDays * 86400_000)
+          : null;
+        await updateUserTier(input.userId, input.tier, expiresAt);
+        return { success: true } as const;
+      }),
+
+    // Materials
+    createMaterial: adminProcedure
+      .input(z.object({
+        slug: z.string().min(1).max(255),
+        categoryId: z.number().int().positive(),
+        namePortuguese: z.string().min(1).max(255),
+        nameEnglish: z.string().min(1).max(255),
+        descriptionPortuguese: z.string().nullable().optional(),
+        descriptionEnglish: z.string().nullable().optional(),
+        riskLevel: z.enum(["RISCO_ALTO", "ATENCAO", "NORMAL"]).optional(),
+        safetyWarningsPortuguese: z.string().nullable().optional(),
+        safetyWarningsEnglish: z.string().nullable().optional(),
+        antiScamPortuguese: z.string().nullable().optional(),
+        antiScamEnglish: z.string().nullable().optional(),
+        technicalSpecsPortuguese: z.string().nullable().optional(),
+        technicalSpecsEnglish: z.string().nullable().optional(),
+        standards: z.string().max(500).nullable().optional(),
+        basePrice: decimalString.nullable().optional(),
+        priceUnit: z.string().max(50).nullable().optional(),
+        imageUrl: z.string().max(500).nullable().optional(),
+        featured: z.number().int().min(0).max(1).optional(),
+      }))
+      .mutation(({ input }) => adminCreateMaterial(input)),
+
+    updateMaterial: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        patch: z.record(z.string(), z.any()),
+      }))
+      .mutation(async ({ input }) => {
+        await adminUpdateMaterial(input.id, input.patch as any);
+        return { success: true } as const;
+      }),
+
+    deleteMaterial: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await adminDeleteMaterial(input.id);
+        return { success: true } as const;
+      }),
+
+    // Tools
+    createTool: adminProcedure
+      .input(z.object({
+        slug: z.string().min(1).max(255),
+        toolCategoryId: z.number().int().positive(),
+        namePortuguese: z.string().min(1).max(255),
+        nameEnglish: z.string().min(1).max(255),
+        descriptionPortuguese: z.string().nullable().optional(),
+        descriptionEnglish: z.string().nullable().optional(),
+        safetyPortuguese: z.string().nullable().optional(),
+        safetyEnglish: z.string().nullable().optional(),
+        technicalSpecsPortuguese: z.string().nullable().optional(),
+        technicalSpecsEnglish: z.string().nullable().optional(),
+        powerType: z.enum(["corded", "battery", "manual", "pneumatic", "hydraulic"]).optional(),
+        professionLevel: z.enum(["beginner", "intermediate", "professional"]).optional(),
+        basePrice: decimalString.nullable().optional(),
+        imageUrl: z.string().max(500).nullable().optional(),
+        featured: z.number().int().min(0).max(1).optional(),
+      }))
+      .mutation(({ input }) => adminCreateTool(input)),
+
+    updateTool: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        patch: z.record(z.string(), z.any()),
+      }))
+      .mutation(async ({ input }) => {
+        await adminUpdateTool(input.id, input.patch);
+        return { success: true } as const;
+      }),
+
+    deleteTool: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await adminDeleteTool(input.id);
+        return { success: true } as const;
+      }),
+
+    // Articles
+    createArticle: adminProcedure
+      .input(z.object({
+        slug: z.string().min(1).max(255),
+        categoryId: z.number().int().positive().nullable().optional(),
+        titlePortuguese: z.string().min(1).max(255),
+        titleEnglish: z.string().min(1).max(255),
+        contentPortuguese: z.string().min(1),
+        contentEnglish: z.string().min(1),
+        summaryPortuguese: z.string().nullable().optional(),
+        summaryEnglish: z.string().nullable().optional(),
+        readingTimeMinutes: z.number().int().min(1).max(120).optional(),
+        featured: z.number().int().min(0).max(1).optional(),
+      }))
+      .mutation(({ input }) => adminCreateArticle(input)),
+
+    updateArticle: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        patch: z.record(z.string(), z.any()),
+      }))
+      .mutation(async ({ input }) => {
+        await adminUpdateArticle(input.id, input.patch);
+        return { success: true } as const;
+      }),
+
+    deleteArticle: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await adminDeleteArticle(input.id);
+        return { success: true } as const;
+      }),
+
+    // Alerts
+    createAlert: adminProcedure
+      .input(z.object({
+        slug: z.string().min(1).max(200),
+        severity: alertSeverityEnum,
+        titlePortuguese: z.string().min(1).max(255),
+        titleEnglish: z.string().min(1).max(255),
+        contentPortuguese: z.string().min(1),
+        contentEnglish: z.string().min(1),
+        categoryId: z.number().int().positive().nullable().optional(),
+        materialId: z.number().int().positive().nullable().optional(),
+        source: z.string().max(255).nullable().optional(),
+        sourceUrl: z.string().max(500).nullable().optional(),
+      }))
+      .mutation(({ input }) => adminCreateAlert(input)),
+
+    updateAlert: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        patch: z.record(z.string(), z.any()),
+      }))
+      .mutation(async ({ input }) => {
+        await adminUpdateAlert(input.id, input.patch);
+        return { success: true } as const;
+      }),
+
+    deleteAlert: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await adminDeleteAlert(input.id);
+        return { success: true } as const;
+      }),
+
+    // Partners
+    listPartners: adminProcedure.query(() => listAllPartners()),
+
+    updatePartnerStatus: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        status: z.enum(["pending", "active", "suspended", "inactive"]),
+      }))
+      .mutation(async ({ input }) => {
+        await adminUpdatePartnerStatus(input.id, input.status);
+        return { success: true } as const;
+      }),
   }),
 });
 

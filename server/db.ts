@@ -1,4 +1,4 @@
-import { and, eq, like, or, desc, asc } from "drizzle-orm";
+import { and, eq, like, or, desc, asc, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { gt, sql, isNull } from "drizzle-orm";
 import {
@@ -816,3 +816,151 @@ export async function globalSearch(query: string, limit = 10) {
 
   return { materials: mats, tools: ts, articles: arts };
 }
+
+// ─── Admin helpers ───────────────────────────────────────────────────────────
+
+export async function getAdminMetrics() {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [[userCount], [matCount], [toolCount], [artCount], [alertCount], [partnerCount], [savedCount], [projectCount], [convCount]] = await Promise.all([
+    db.select({ n: count() }).from(users),
+    db.select({ n: count() }).from(materials),
+    db.select({ n: count() }).from(tools),
+    db.select({ n: count() }).from(knowledgeBaseArticles),
+    db.select({ n: count() }).from(safetyAlerts),
+    db.select({ n: count() }).from(partners),
+    db.select({ n: count() }).from(savedItems),
+    db.select({ n: count() }).from(projects),
+    db.select({ n: count() }).from(chatConversations),
+  ]);
+
+  const tierCounts = await db.select({ tier: users.tier, n: count() }).from(users).groupBy(users.tier);
+  const partnerStatusCounts = await db.select({ status: partners.status, n: count() }).from(partners).groupBy(partners.status);
+  const riskCounts = await db.select({ risk: materials.riskLevel, n: count() }).from(materials).groupBy(materials.riskLevel);
+
+  return {
+    users: Number(userCount?.n ?? 0),
+    materials: Number(matCount?.n ?? 0),
+    tools: Number(toolCount?.n ?? 0),
+    articles: Number(artCount?.n ?? 0),
+    alerts: Number(alertCount?.n ?? 0),
+    partners: Number(partnerCount?.n ?? 0),
+    savedItems: Number(savedCount?.n ?? 0),
+    projects: Number(projectCount?.n ?? 0),
+    conversations: Number(convCount?.n ?? 0),
+    tierCounts: tierCounts.map(r => ({ tier: r.tier, count: Number(r.n) })),
+    partnerStatusCounts: partnerStatusCounts.map(r => ({ status: r.status, count: Number(r.n) })),
+    riskCounts: riskCounts.map(r => ({ risk: r.risk, count: Number(r.n) })),
+  };
+}
+
+export async function listAllUsers(limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users).orderBy(desc(users.createdAt)).limit(limit).offset(offset);
+}
+
+export async function adminUpdateUserRole(userId: number, role: "user" | "admin") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ role }).where(eq(users.id, userId));
+}
+
+// Materials admin
+export async function adminCreateMaterial(data: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(materials).values(data as any);
+  return { id: Number((result as any).insertId) };
+}
+
+export async function adminUpdateMaterial(id: number, patch: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (Object.keys(patch).length === 0) return;
+  await db.update(materials).set(patch as any).where(eq(materials.id, id));
+}
+
+export async function adminDeleteMaterial(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(materials).where(eq(materials.id, id));
+}
+
+// Tools admin
+export async function adminCreateTool(data: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(tools).values(data as any);
+  return { id: Number((result as any).insertId) };
+}
+
+export async function adminUpdateTool(id: number, patch: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (Object.keys(patch).length === 0) return;
+  await db.update(tools).set(patch as any).where(eq(tools.id, id));
+}
+
+export async function adminDeleteTool(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(tools).where(eq(tools.id, id));
+}
+
+// Articles admin
+export async function adminCreateArticle(data: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(knowledgeBaseArticles).values(data as any);
+  return { id: Number((result as any).insertId) };
+}
+
+export async function adminUpdateArticle(id: number, patch: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (Object.keys(patch).length === 0) return;
+  await db.update(knowledgeBaseArticles).set(patch as any).where(eq(knowledgeBaseArticles.id, id));
+}
+
+export async function adminDeleteArticle(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(knowledgeBaseArticles).where(eq(knowledgeBaseArticles.id, id));
+}
+
+// Alerts admin
+export async function adminCreateAlert(data: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(safetyAlerts).values(data as any);
+  return { id: Number((result as any).insertId) };
+}
+
+export async function adminUpdateAlert(id: number, patch: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (Object.keys(patch).length === 0) return;
+  await db.update(safetyAlerts).set(patch as any).where(eq(safetyAlerts.id, id));
+}
+
+export async function adminDeleteAlert(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(safetyAlerts).where(eq(safetyAlerts.id, id));
+}
+
+// Partners admin
+export async function listAllPartners() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(partners).orderBy(desc(partners.createdAt));
+}
+
+export async function adminUpdatePartnerStatus(id: number, status: "pending" | "active" | "suspended" | "inactive") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(partners).set({ status }).where(eq(partners.id, id));
+}
+
