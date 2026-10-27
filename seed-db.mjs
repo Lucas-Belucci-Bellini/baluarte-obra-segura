@@ -101,6 +101,18 @@ const materials = [
     basePrice:'18.90', priceUnit:'unidade',
   },
   {
+    slug:'disjuntor-ar-condicionado-36000-btu-referencia', categorySlug:'eletrica', featured:0,
+    namePortuguese:'Disjuntor para Ar-Condicionado 36.000 BTUs — dimensionar por modelo',
+    nameEnglish:'Circuit Breaker for 36,000 BTU Air Conditioner — model-specific sizing',
+    descriptionPortuguese:'Registro de referência para instalação de ar-condicionado de 36.000 BTU/h. Não representa uma amperagem universal: verificar tensão, corrente nominal e máxima, proteção recomendada e esquema de alimentação no manual do modelo exato.',
+    descriptionEnglish:'Reference entry for 36,000 BTU/h air-conditioner installations. No universal amperage is specified: verify voltage, rated and maximum current, recommended protection, and supply configuration in the exact model manual.',
+    riskLevel:'RISCO_ALTO',
+    safetyWarningsPortuguese:'NÃO escolher o disjuntor apenas pelos BTUs. Usar circuito dedicado, aterramento e condutores dimensionados conforme o manual e a instalação. Confirmar número de polos, curva e corrente com eletricista qualificado. Nunca aumentar o disjuntor sem verificar a capacidade dos cabos.',
+    safetyWarningsEnglish:'DO NOT select the breaker based on BTUs alone. Use a dedicated circuit, grounding, and conductors sized for the manual and installation. Confirm pole count, trip curve, and current with a qualified electrician. Never increase breaker rating without checking conductor capacity.',
+    technicalSpecsPortuguese:'Capacidade de referência: 36.000 BTU/h | Tensão: confirmar na etiqueta | Corrente/disjuntor/bitola: conforme manual do modelo e dimensionamento da instalação.',
+    standards:'NBR 5410; manual de instalação do fabricante',
+  },
+  {
     slug:'tomada-2p-t-20a', categorySlug:'eletrica', featured:0,
     namePortuguese:'Tomada 2P+T 20A (padrão NBR 14136)', nameEnglish:'20A Outlet (NBR 14136 standard)',
     descriptionPortuguese:'Tomada no padrão brasileiro obrigatório desde 2010. 20A para cozinha, lavanderia e banheiro. Com aterramento (T).',
